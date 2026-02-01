@@ -1,64 +1,89 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TG Multiplayer Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; background: #eee; padding-top: 50px; }
-        #counter { font-size: 80px; font-weight: bold; color: #0088cc; }
-        button { padding: 20px 40px; font-size: 20px; cursor: pointer; border-radius: 12px; border: none; background: #0088cc; color: white; }
-        button:active { background: #005588; }
+        body { font-family: sans-serif; text-align: center; margin: 0; background: #f4f4f9; user-select: none; }
+        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; max-width: 350px; margin: 20px auto; background: #ccc; border: 2px solid #333; }
+        .cell { aspect-ratio: 1; background: white; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; }
+        .cell.hit { background: #ff4d4d; color: white; } /* Попал */
+        .cell.miss { background: #b3e5fc; } /* Промах */
+        #status { margin-top: 20px; font-weight: bold; color: #333; }
+        .info { font-size: 12px; color: #666; padding: 10px; }
     </style>
 </head>
 <body>
 
-    <h1>Счётчик:</h1>
-    <div id="counter">0</div>
-    <br>
-    <button id="btn">ПЛЮС ОДИН!</button>
+    <div id="status">Загрузка игры...</div>
+    <div class="grid" id="board"></div>
+    <div class="info">Отправь ссылку другу, чтобы играть вместе</div>
 
-    <!-- Подключаем Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, onValue, set, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+        import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // ТВОИ ДАННЫЕ ИЗ FIREBASE CONSOLE:
+        // КОНФИГ FIREBASE (Вставь свой!)
         const firebaseConfig = {
-        apiKey: "AIzaSyBzu_EqbYoHR9AGRjNTjlCX2f4seIMgpwk",
-        authDomain: "test-game-bf099.firebaseapp.com",
-        databaseURL: "https://test-game-bf099-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "test-game-bf099",
-        storageBucket: "test-game-bf099.firebasestorage.app",
-        messagingSenderId: "624705252854",
-        appId: "1:624705252854:web:f24eb7255da54c47902bd7",
-        measurementId: "G-TVDRXT9CHV"
+          apiKey: "AIzaSyBzu_EqbYoHR9AGRjNTjlCX2f4seIMgpwk",
+          authDomain: "test-game-bf099.firebaseapp.com",
+          databaseURL: "https://test-game-bf099-default-rtdb.europe-west1.firebasedatabase.app",
+          projectId: "test-game-bf099",
+          storageBucket: "test-game-bf099.firebasestorage.app",
+          messagingSenderId: "624705252854",
+          appId: "1:624705252854:web:f24eb7255da54c47902bd7",
+          measurementId: "G-TVDRXT9CHV"
     };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const countRef = ref(db, 'clicks/count');
 
-        const counterElement = document.getElementById('counter');
-        const button = document.getElementById('btn');
+        // 1. ОПРЕДЕЛЯЕМ КОМНАТУ
+        // Telegram передает параметры из startapp в initDataUnsafe
+        const tg = window.Telegram.WebApp;
+        const urlParams = new URLSearchParams(tg.initDataUnsafe.start_param || "");
+        const roomId = tg.initDataUnsafe.start_param || "default_room";
+        const gameRef = ref(db, `games/${roomId}`);
 
-        // 1. СЛУШАЕМ ИЗМЕНЕНИЯ (Real-time)
-        onValue(countRef, (snapshot) => {
-            const data = snapshot.val();
-            counterElement.innerText = data || 0;
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
+
+        // 2. СОЗДАЕМ СЕТКУ 10x10
+        for (let i = 0; i < 100; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.index = i;
+            cell.onclick = () => makeShot(i);
+            boardElement.appendChild(cell);
+        }
+
+        // 3. ФУНКЦИЯ ВЫСТРЕЛА
+        function makeShot(index) {
+            // Записываем в базу: "в комнате такой-то, клетка №X теперь имеет статус 'hit'"
+            const updates = {};
+            updates[`/shots/${index}`] = 'hit'; // Для теста пока всё будет попаданием
+            update(gameRef, updates);
+        }
+
+        // 4. СЛУШАЕМ ОБНОВЛЕНИЯ ИГРЫ
+        onValue(gameRef, (snapshot) => {
+            const data = snapshot.val() || {};
+            const shots = data.shots || {};
+
+            statusElement.innerText = `Комната: ${roomId}`;
+
+            // Обновляем визуально все клетки
+            document.querySelectorAll('.cell').forEach((cell, index) => {
+                if (shots[index] === 'hit') {
+                    cell.classList.add('hit');
+                    cell.innerText = '💥';
+                }
+            });
         });
 
-        // 2. ЗАПИСЫВАЕМ ПРИ НАЖАТИИ
-        button.onclick = () => {
-            // Используем транзакцию, чтобы два игрока одновременно не "сломали" счет
-            runTransaction(countRef, (currentCount) => {
-                return (currentCount || 0) + 1;
-            });
-        };
-
-        // Сообщаем Telegram, что приложение готово
-        window.Telegram.WebApp.ready();
+        tg.ready();
+        tg.expand(); // Разворачиваем на весь экран
     </script>
 </body>
 </html>
