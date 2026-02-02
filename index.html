@@ -62,6 +62,33 @@
         /* Shake Animation */
         .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+
+        /* Эффект для главных кнопок (Deploy, Create Battle) */
+        .btn-primary:hover {
+            filter: brightness(1.2);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        /* Эффект для второстепенных кнопок (Shop и др) */
+        .btn-secondary:hover {
+            background: rgba(255, 0, 255, 0.3);
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Эффект для стеклянных карточек и выбора языка */
+        .glass:hover {
+            background: rgba(20, 20, 45, 0.95);
+            border-color: rgba(0, 255, 255, 0.5);
+            transform: scale(1.02);
+        }
+
+        /* Добавляем плавность всем интерактивным элементам */
+        button, .glass, input {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
     </style>
 </head>
 <body>
@@ -72,11 +99,11 @@
         <div class="flex flex-col items-center justify-center min-h-screen p-6">
             <h1 class="text-5xl font-black orbitron text-cyan-400 mb-8 text-center neon-text">NAVAL<br>WARFARE</h1>
             <div class="w-full max-w-sm space-y-4">
-                <button onclick="setLanguage('en')" class="w-full glass rounded-2xl p-6 flex justify-center active:scale-95 transition">
-                    <span class="text-2xl font-bold text-cyan-400">English</span>
+                <button onclick="setLanguage('en')" class="w-full glass rounded-2xl p-6 flex items-center gap-4 active:scale-95 transition">
+                    <span class="text-4xl">🇬🇧</span> <span class="text-2xl font-bold">English</span>
                 </button>
-                <button onclick="setLanguage('ru')" class="w-full glass rounded-2xl p-6 flex justify-center active:scale-95 transition">
-                    <span class="text-2xl font-bold text-cyan-400">Русский</span>
+                <button onclick="setLanguage('ru')" class="w-full glass rounded-2xl p-6 flex items-center gap-4 active:scale-95 transition">
+                    <span class="text-4xl">🇷🇺</span> <span class="text-2xl font-bold">Русский</span>
                 </button>
             </div>
         </div>
@@ -87,7 +114,7 @@
         <div class="flex flex-col items-center justify-center min-h-screen p-6">
             <div class="glass rounded-3xl p-8 w-full max-w-md">
                 <h2 class="text-2xl font-bold orbitron text-cyan-400 mb-2" data-key="welcome">Welcome</h2>
-                <label for="input-nickname"></label><input id="input-nickname" type="text" placeholder="Nickname..." class="w-full bg-black/50 border border-cyan-400/50 rounded-xl px-4 py-3 text-white mb-4 outline-none focus:border-cyan-400">
+                <label for="input-nickname"></label><input id="input-nickname"  type="text" data-key="nick_placeholder" placeholder="Nickname..." class="w-full bg-black/50 border border-cyan-400/50 rounded-xl px-4 py-3 text-white mb-4 outline-none focus:border-cyan-400">
                 <button id="btn-register" class="w-full btn-primary rounded-xl py-4 font-bold text-lg orbitron" data-key="deploy">DEPLOY</button>
             </div>
         </div>
@@ -256,8 +283,32 @@
         // 2. STATE & TRANSLATIONS
         // ==========================================
         const TEXTS = {
-            en: { welcome: "Welcome, Commander", deploy: "DEPLOY", create_battle: "CREATE BATTLE", shop: "SHOP", deploy_fleet: "Deploy Fleet", select_ship: "Select Ship:", ready: "READY FOR BATTLE", waiting: "Waiting for opponent...", your_turn: "YOUR TURN", enemy_turn: "ENEMY TURN" },
-            ru: { welcome: "Добро пожаловать", deploy: "В БОЙ", create_battle: "СОЗДАТЬ БИТВУ", shop: "МАГАЗИН", deploy_fleet: "Расстановка", select_ship: "Выберите корабль:", ready: "К БОЮ", waiting: "Ждем противника...", your_turn: "ВАШ ХОД", enemy_turn: "ХОД ВРАГА" }
+            en: {
+                welcome: "Welcome, Commander",
+                deploy: "DEPLOY",
+                create_battle: "CREATE BATTLE",
+                shop: "SHOP",
+                deploy_fleet: "Deploy Fleet",
+                select_ship: "Select Ship:",
+                ready: "READY FOR BATTLE",
+                waiting: "Waiting for opponent...",
+                your_turn: "YOUR TURN",
+                enemy_turn: "ENEMY TURN",
+                nick_placeholder: "Nickname..." // Английский вариант
+            },
+            ru: {
+                welcome: "Добро пожаловать",
+                deploy: "В БОЙ",
+                create_battle: "СОЗДАТЬ БИТВУ",
+                shop: "МАГАЗИН",
+                deploy_fleet: "Расстановка",
+                select_ship: "Выберите корабль:",
+                ready: "К БОЮ",
+                waiting: "Ждем противника...",
+                your_turn: "ВАШ ХОД",
+                enemy_turn: "ХОД ВРАГА",
+                nick_placeholder: "Ник..." // Русский вариант
+            }
         };
 
         let state = {
@@ -288,11 +339,22 @@
 
         function setLanguage(lang) {
             state.lang = lang;
+            localStorage.setItem('lang', lang); // Сохраняем выбор
+
             document.querySelectorAll('[data-key]').forEach(el => {
                 const key = el.getAttribute('data-key');
-                if(TEXTS[lang][key]) el.textContent = TEXTS[lang][key];
+                if(TEXTS[lang][key]) {
+                    // Если это поле ввода (input), меняем placeholder
+                    if (el.tagName === 'INPUT') {
+                        el.placeholder = TEXTS[lang][key];
+                    } else {
+                        // Для остальных элементов меняем текст
+                        el.textContent = TEXTS[lang][key];
+                    }
+                }
             });
-            showScreen('screen-register'); // Or dashboard if logged in
+
+            showScreen('screen-register');
             if(state.user) showScreen('screen-dashboard');
         }
 
