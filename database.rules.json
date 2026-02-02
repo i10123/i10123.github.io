@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "users": {
+      ".read": false,
+      "$uid": {
+        ".read": true,
+        ".write": "newData != null && newData.hasChildren(['nickname', 'id'])"
+      }
+    },
+    "games": {
+      ".read": false,
+      "$gameId": {
+        ".read": true,
+        ".write": "newData == null || newData.hasChildren()"
+      }
+    }
+  }
+}

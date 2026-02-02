@@ -2,8 +2,11 @@ import asyncio
 import logging
 import sys
 import time
-import os  # Добавили
-from dotenv import load_dotenv  # Добавили
+import os
+import signal
+import json
+from pathlib import Path
+from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import CommandStart, CommandObject
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, FSInputFile
@@ -18,18 +21,51 @@ WELCOME_IMAGE_PATH = os.getenv("WELCOME_IMAGE_PATH")
 raw_admin_ids = os.getenv("ADMIN_IDS", "")
 ADMIN_IDS = [int(i.strip()) for i in raw_admin_ids.split(",") if i.strip()]
 
+# Файл для сохранения состояния (кэш, данные) при выключении бота
+DB_PATH = Path(__file__).parent / "bot_state.json"
+
 cached_welcome_file_id = None
 
-# 🚀 ЛОГИКА БОТА
-logging.basicConfig(level=logging.WARNING)
+# Подавить шумные логи aiogram при обрыве соединения
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(levelname)s: %(message)s"
+)
+logging.getLogger("aiogram.dispatcher").setLevel(logging.WARNING)
+
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
+
+
+def load_db():
+    """Загрузить состояние бота из файла (при старте)."""
+    global cached_welcome_file_id
+    try:
+        if DB_PATH.exists():
+            with open(DB_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                cached_welcome_file_id = data.get("cached_welcome_file_id")
+    except Exception as e:
+        logging.warning(f"Не удалось загрузить bot_state.json: {e}")
+
+
+def save_db():
+    """Сохранить состояние бота в файл (при выключении/перезагрузке)."""
+    try:
+        data = {
+            "cached_welcome_file_id": cached_welcome_file_id,
+        }
+        with open(DB_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logging.warning(f"Не удалось сохранить bot_state.json: {e}")
+
 
 async def show_loading_animation():
     print("🚀 Инициализация систем Naval Warfare...")
     toolbar_width = 40
     for i in range(toolbar_width + 1):
-        time.sleep(0.03)  # Чуть ускорил для комфорта
+        time.sleep(0.03)
         progress = int((i / toolbar_width) * 100)
         bar = "█" * i + "-" * (toolbar_width - i)
         sys.stdout.write(f"\r[{bar}] {progress}% Загрузка модулей")
@@ -68,7 +104,6 @@ async def command_start_handler(message: types.Message, command: CommandObject):
 
     try:
         if cached_welcome_file_id:
-            # Отправляем по File ID (Мгновенно)
             await message.answer_photo(
                 photo=cached_welcome_file_id,
                 caption=caption_text,
@@ -76,7 +111,6 @@ async def command_start_handler(message: types.Message, command: CommandObject):
                 reply_markup=keyboard
             )
         else:
-            # Если ID еще нет, загружаем файл первый раз
             photo_file = FSInputFile(WELCOME_IMAGE_PATH)
             sent_message = await message.answer_photo(
                 photo=photo_file,
@@ -84,16 +118,15 @@ async def command_start_handler(message: types.Message, command: CommandObject):
                 parse_mode="HTML",
                 reply_markup=keyboard
             )
-            # Сохраняем ID последнего фото из списка (самое большое разрешение)
             cached_welcome_file_id = sent_message.photo[-1].file_id
-            logging.info(f"Файл загружен и закэширован. ID: {cached_welcome_file_id}")
-
+            logging.info(f"Файл загружен и кэш сохранён. ID: {cached_welcome_file_id}")
     except Exception as e:
         logging.error(f"Ошибка при отправке фото: {e}")
         await message.answer(caption_text, parse_mode="HTML", reply_markup=keyboard)
 
 
 async def on_startup():
+    load_db()
     await show_loading_animation()
     for admin_id in ADMIN_IDS:
         try:
@@ -104,6 +137,7 @@ async def on_startup():
 
 async def on_shutdown():
     print("\n🛑 Останавливаю системы...")
+    save_db()
     for admin_id in ADMIN_IDS:
         try:
             await bot.send_message(admin_id, "🛑 Бот остановлен", parse_mode="HTML")
@@ -116,11 +150,17 @@ async def main():
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
     await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    except asyncio.CancelledError:
+        pass
+    finally:
+        await bot.session.close()
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("Exit")
+        print("\n🛑 Остановка бота...")
+        save_db()

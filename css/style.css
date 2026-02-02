@@ -1,0 +1,110 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+    --neon-cyan: #00ffff;
+    --neon-pink: #ff00ff;
+    --neon-blue: #0080ff;
+    --dark-bg: #0a0a14;
+    --glass-bg: rgba(15, 15, 30, 0.85);
+    --glass-border: rgba(0, 255, 255, 0.2);
+}
+body { font-family: 'Rajdhani', sans-serif; background: var(--dark-bg); color: #fff; overflow-x: hidden; }
+.orbitron { font-family: 'Orbitron', sans-serif; }
+
+/* Ocean BG */
+.ocean-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: linear-gradient(180deg, #0a0a14 0%, #001a33 50%, #000d1a 100%); }
+.wave { position: absolute; width: 200%; height: 100%; background: radial-gradient(ellipse at center, rgba(0, 128, 255, 0.15) 0%, transparent 70%); animation: wave-animation 15s infinite linear; }
+.wave:nth-child(2) { animation-duration: 20s; animation-delay: -5s; opacity: 0.7; }
+@keyframes wave-animation { 0% { transform: translateX(0) translateY(0); } 50% { transform: translateX(-25%) translateY(-10px); } 100% { transform: translateX(0) translateY(0); } }
+
+/* UI Elements */
+.glass { background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); }
+.neon-text { text-shadow: 0 0 10px currentColor; }
+.btn-primary { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue)); transition: all 0.2s; position: relative; overflow: hidden; color: #000; }
+.btn-primary:active { transform: scale(0.96); }
+.btn-secondary { background: rgba(255, 0, 255, 0.15); border: 1px solid var(--neon-pink); color: #fff; transition: all 0.2s; }
+.btn-secondary:active { transform: scale(0.96); background: rgba(255, 0, 255, 0.3); }
+
+/* Screens */
+.screen { display: none; animation: fadeIn 0.4s ease-out; width: 100%; }
+.screen.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* GRID SYSTEM — адаптивность: aspect-ratio, max-width 90vw */
+.ship-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 2px;
+    max-width: min(340px, 90vw);
+    margin: 0 auto;
+    aspect-ratio: 1;
+}
+.cell { background: rgba(0, 128, 255, 0.1); border: 1px solid rgba(0, 255, 255, 0.2); cursor: pointer; position: relative; }
+.cell.ship { background: rgba(0, 255, 255, 0.5); box-shadow: inset 0 0 10px var(--neon-cyan); }
+.cell.hit { background: radial-gradient(circle, #ff4444, #880000); animation: explosion 0.4s ease-out; }
+.cell.miss { background: rgba(255, 255, 255, 0.1); }
+.cell.miss::after { content: '•'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.5); }
+.cell.sunk { background: #ff0000; border-color: #ffaa00; box-shadow: 0 0 15px #ff4400; animation: sink 0.5s ease-out; }
+.cell.fog { filter: brightness(0.4); }
+@keyframes pop { 0% { transform: scale(0.8); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+@keyframes explosion {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.8); }
+    50% { transform: scale(1.15); box-shadow: 0 0 20px 8px rgba(255, 0, 0, 0.6); }
+    100% { transform: scale(1); box-shadow: 0 0 15px #ff4400; }
+}
+@keyframes sink {
+    0% { opacity: 1; filter: brightness(1); }
+    100% { opacity: 1; filter: brightness(1.2); box-shadow: 0 0 20px #ff4400; }
+}
+
+/* Fog of war — затемнение неоткрытых клеток врага */
+.ship-grid.fog-of-war .cell:not(.hit):not(.miss) { filter: brightness(0.35); }
+.ship-grid.fog-of-war .cell.hit,
+.ship-grid.fog-of-war .cell.miss { filter: none; }
+
+/* Modal */
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999; display: none; align-items: center; justify-content: center; }
+.modal.active { display: flex; }
+
+/* Shake Animation */
+.shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+
+/* Hover effects */
+.btn-primary:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+    transform: translateY(-2px);
+}
+.btn-secondary:hover {
+    background: rgba(255, 0, 255, 0.3);
+    border-color: var(--neon-pink);
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+    transform: translateY(-2px);
+}
+.glass:hover {
+    background: rgba(20, 20, 45, 0.95);
+    border-color: rgba(0, 255, 255, 0.5);
+    transform: scale(1.02);
+}
+button, .glass, input {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Кнопка «Назад» на каждом экране — удобный тап и видимость */
+.btn-back {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 12px;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    -webkit-tap-highlight-color: transparent;
+}
+.btn-back:hover { opacity: 0.9; }
+.btn-back:active { opacity: 0.8; }
+.btn-back:focus { outline: none; }
+.btn-back:focus-visible { outline: 2px solid var(--neon-cyan); outline-offset: 2px; }

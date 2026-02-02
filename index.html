@@ -4,92 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Naval Warfare 2077</title>
+    <link rel="stylesheet" href="css/style.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
-
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        :root {
-            --neon-cyan: #00ffff;
-            --neon-pink: #ff00ff;
-            --neon-blue: #0080ff;
-            --dark-bg: #0a0a14;
-            --glass-bg: rgba(15, 15, 30, 0.85);
-            --glass-border: rgba(0, 255, 255, 0.2);
-        }
-        body { font-family: 'Rajdhani', sans-serif; background: var(--dark-bg); color: #fff; overflow-x: hidden; }
-        .orbitron { font-family: 'Orbitron', sans-serif; }
-
-        /* Ocean BG */
-        .ocean-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: linear-gradient(180deg, #0a0a14 0%, #001a33 50%, #000d1a 100%); }
-        .wave { position: absolute; width: 200%; height: 100%; background: radial-gradient(ellipse at center, rgba(0, 128, 255, 0.15) 0%, transparent 70%); animation: wave-animation 15s infinite linear; }
-        .wave:nth-child(2) { animation-duration: 20s; animation-delay: -5s; opacity: 0.7; }
-        @keyframes wave-animation { 0% { transform: translateX(0) translateY(0); } 50% { transform: translateX(-25%) translateY(-10px); } 100% { transform: translateX(0) translateY(0); } }
-
-        /* UI Elements */
-        .glass { background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); }
-        .neon-text { text-shadow: 0 0 10px currentColor; }
-        .btn-primary { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue)); transition: all 0.2s; position: relative; overflow: hidden; color: #000; }
-        .btn-primary:active { transform: scale(0.96); }
-        .btn-secondary { background: rgba(255, 0, 255, 0.15); border: 1px solid var(--neon-pink); color: #fff; transition: all 0.2s; }
-        .btn-secondary:active { transform: scale(0.96); background: rgba(255, 0, 255, 0.3); }
-
-        /* Screens */
-        .screen { display: none; animation: fadeIn 0.4s ease-out; width: 100%; }
-        .screen.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* GRID SYSTEM */
-        .ship-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; max-width: 340px; margin: 0 auto; aspect-ratio: 1; }
-        .cell { background: rgba(0, 128, 255, 0.1); border: 1px solid rgba(0, 255, 255, 0.2); cursor: pointer; position: relative; }
-        .cell.ship { background: rgba(0, 255, 255, 0.5); box-shadow: inset 0 0 10px var(--neon-cyan); }
-        .cell.hit { background: radial-gradient(circle, #ff4444, #880000); animation: pop 0.3s; }
-        .cell.miss { background: rgba(255, 255, 255, 0.1); }
-        .cell.miss::after { content: '•'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.5); }
-        .cell.sunk { background: #ff0000; border-color: #ffaa00; box-shadow: 0 0 15px #ff4400; }
-        @keyframes pop { 0% { transform: scale(0.8); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
-
-        /* Modal */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999; display: none; align-items: center; justify-content: center; }
-        .modal.active { display: flex; }
-
-        /* Shake Animation */
-        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
-
-        /* Эффект для главных кнопок (Deploy, Create Battle) */
-        .btn-primary:hover {
-            filter: brightness(1.2);
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
-            transform: translateY(-2px);
-        }
-        
-        /* Эффект для второстепенных кнопок (Shop и др) */
-        .btn-secondary:hover {
-            background: rgba(255, 0, 255, 0.3);
-            border-color: var(--neon-pink);
-            box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
-            transform: translateY(-2px);
-        }
-
-        /* Эффект для стеклянных карточек и выбора языка */
-        .glass:hover {
-            background: rgba(20, 20, 45, 0.95);
-            border-color: rgba(0, 255, 255, 0.5);
-            transform: scale(1.02);
-        }
-
-        /* Добавляем плавность всем интерактивным элементам */
-        button, .glass, input {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        }
-    </style>
 </head>
 <body>
     <div class="ocean-bg"><div class="wave"></div><div class="wave"></div></div>
@@ -112,9 +32,11 @@
     <!-- 2. REGISTER SCREEN -->
     <div id="screen-register" class="screen">
         <div class="flex flex-col items-center justify-center min-h-screen p-6">
+            <button type="button" onclick="showScreen('screen-language')" class="btn-back self-start mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
             <div class="glass rounded-3xl p-8 w-full max-w-md">
                 <h2 class="text-2xl font-bold orbitron text-cyan-400 mb-2" data-key="welcome">Welcome</h2>
-                <label for="input-nickname"></label><input id="input-nickname"  type="text" data-key="nick_placeholder" placeholder="Nickname..." class="w-full bg-black/50 border border-cyan-400/50 rounded-xl px-4 py-3 text-white mb-4 outline-none focus:border-cyan-400">
+                <label for="input-nickname"></label>
+                <input id="input-nickname" type="text" data-key="nick_placeholder" placeholder="Nickname..." class="w-full bg-black/50 border border-cyan-400/50 rounded-xl px-4 py-3 text-white mb-4 outline-none focus:border-cyan-400">
                 <button id="btn-register" class="w-full btn-primary rounded-xl py-4 font-bold text-lg orbitron" data-key="deploy">DEPLOY</button>
             </div>
         </div>
@@ -123,45 +45,49 @@
     <!-- 3. LOBBY / DASHBOARD -->
     <div id="screen-dashboard" class="screen">
         <div class="p-4 pb-24 min-h-screen">
+            <div class="flex items-center gap-2 mb-4">
+                <button type="button" onclick="showScreen('screen-language')" class="btn-back text-cyan-400 text-sm font-medium flex items-center gap-1">
+                    <span aria-hidden="true">←</span> <span data-key="back">Back</span>
+                </button>
+            </div>
             <div class="flex justify-between items-center mb-6 pt-2">
                 <div>
                     <h1 class="text-2xl font-bold orbitron text-cyan-400">COMMAND</h1>
                     <p id="user-display-name" class="text-sm opacity-70">Cadet</p>
                 </div>
-                <button onclick="showScreen('settings')" class="glass p-2 rounded-lg text-cyan-400"><iconify-icon icon="lucide:settings" width="24"></iconify-icon></button>
+                <button onclick="showScreen('screen-settings')" class="glass p-2 rounded-lg text-cyan-400"><iconify-icon icon="lucide:settings" width="24"></iconify-icon></button>
             </div>
 
-            <!-- Stats -->
             <div class="glass rounded-2xl p-4 mb-6 flex justify-around text-center">
                 <div><div class="text-2xl font-bold text-yellow-400" id="dash-coins">0</div><div class="text-xs opacity-60">Coins</div></div>
                 <div><div class="text-2xl font-bold text-green-400" id="dash-wins">0</div><div class="text-xs opacity-60">Wins</div></div>
                 <div><div class="text-2xl font-bold text-pink-400" id="dash-winrate">0%</div><div class="text-xs opacity-60">WinRate</div></div>
             </div>
 
-            <!-- Main Actions -->
             <div class="space-y-3">
                 <button onclick="createBattle()" class="w-full btn-primary rounded-2xl py-5 font-bold text-lg flex items-center justify-center gap-3">
                     <iconify-icon icon="lucide:swords" width="24"></iconify-icon> <span data-key="create_battle">CREATE BATTLE</span>
                 </button>
                 <div id="game-link-area" class="hidden glass p-4 rounded-xl text-center">
                     <p class="text-xs mb-2 text-cyan-400">Send this link to friend:</p>
-                    <label for="share-link-input"></label><input id="share-link-input" readonly class="w-full bg-black/50 text-xs p-2 rounded mb-2 border border-cyan-500/30">
+                    <label for="share-link-input"></label>
+                    <input id="share-link-input" readonly class="w-full bg-black/50 text-xs p-2 rounded mb-2 border border-cyan-500/30">
                     <button onclick="copyGameLink()" class="btn-secondary px-4 py-1 rounded text-xs">COPY</button>
                 </div>
 
-                <button onclick="showScreen('shop')" class="w-full btn-secondary rounded-2xl py-4 font-bold flex items-center justify-center gap-3">
+                <button onclick="showScreen('screen-shop')" class="w-full btn-secondary rounded-2xl py-4 font-bold flex items-center justify-center gap-3">
                     <iconify-icon icon="lucide:shopping-bag" width="20"></iconify-icon> <span data-key="shop">SHOP</span>
                 </button>
             </div>
 
-            <!-- Admin Button (Hidden by default) -->
-            <button id="admin-btn" onclick="showScreen('admin')" class="hidden w-full mt-4 border border-red-500/50 text-red-400 py-2 rounded-xl text-xs">ADMIN PANEL</button>
+            <button id="admin-btn" onclick="showScreen('screen-admin')" class="hidden w-full mt-4 border border-red-500/50 text-red-400 py-2 rounded-xl text-xs">ADMIN PANEL</button>
         </div>
     </div>
 
     <!-- 4. PLACEMENT SCREEN -->
     <div id="screen-placement" class="screen">
         <div class="p-4 min-h-screen flex flex-col">
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back self-start mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold text-cyan-400" data-key="deploy_fleet">Deploy Fleet</h2>
                 <button onclick="rotateShip()" class="glass p-2 rounded text-cyan-400"><iconify-icon icon="lucide:rotate-cw"></iconify-icon></button>
@@ -173,18 +99,17 @@
 
             <div class="glass rounded-xl p-4 mb-4">
                 <p class="text-sm mb-2" data-key="select_ship">Select Ship:</p>
-                <div class="flex gap-2 justify-center" id="ship-selector">
-                    <!-- Ships injected by JS -->
-                </div>
+                <div class="flex gap-2 justify-center" id="ship-selector"></div>
             </div>
 
-            <button id="btn-ready" disabled onclick="confirmPlacement()" class="mt-auto w-full btn-primary rounded-xl py-4 font-bold text-black opacity-50 transition">READY</button>
+            <button id="btn-ready" disabled onclick="confirmPlacement()" class="mt-auto w-full btn-primary rounded-xl py-4 font-bold text-black opacity-50 transition" data-key="ready">READY</button>
         </div>
     </div>
 
     <!-- 5. BATTLE SCREEN -->
     <div id="screen-battle" class="screen">
         <div class="p-4 min-h-screen flex flex-col">
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back self-start mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
             <div class="flex justify-between items-center mb-4 glass p-2 rounded-xl">
                 <div class="text-center w-1/3">
                     <div class="text-xs text-gray-400">YOU</div>
@@ -199,13 +124,11 @@
 
             <div class="text-center mb-2 text-sm font-bold" id="turn-indicator">WAITING...</div>
 
-            <!-- Enemy Grid -->
             <div class="glass rounded-2xl p-2 mb-4 relative">
                 <div class="absolute -top-3 left-2 text-xs bg-black px-2 text-pink-500">ENEMY WATERS</div>
                 <div id="enemy-grid" class="ship-grid"></div>
             </div>
 
-            <!-- My Grid -->
             <div class="glass rounded-2xl p-2 mt-auto relative opacity-80 scale-90">
                 <div class="absolute -top-3 left-2 text-xs bg-black px-2 text-cyan-500">YOUR FLEET</div>
                 <div id="my-grid" class="ship-grid"></div>
@@ -216,17 +139,19 @@
     <!-- 6. ADMIN SCREEN -->
     <div id="screen-admin" class="screen">
         <div class="p-4">
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-xl font-bold text-red-400">ADMIN</h2>
-                <button onclick="showScreen('dashboard')" class="text-sm">Back</button>
             </div>
             <div class="space-y-3">
                 <div class="glass p-4 rounded-xl">
                     <p>Active Games: <span id="admin-active-games" class="font-bold">0</span></p>
                 </div>
                 <div class="glass p-4 rounded-xl">
-                    <label for="admin-user-id"></label><input id="admin-user-id" placeholder="User ID" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
-                    <label for="admin-amount"></label><input id="admin-amount" type="number" placeholder="Amount" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
+                    <label for="admin-user-id"></label>
+                    <input id="admin-user-id" placeholder="User ID" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
+                    <label for="admin-amount"></label>
+                    <input id="admin-amount" type="number" placeholder="Amount" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
                     <div class="flex gap-2">
                         <button onclick="adminAddCurrency('coins')" class="flex-1 btn-secondary p-2 rounded">Add Coins</button>
                         <button onclick="adminAddCurrency('gems')" class="flex-1 btn-secondary p-2 rounded">Add Gems</button>
@@ -236,17 +161,17 @@
         </div>
     </div>
 
-    <!-- 7. SHOP & SETTINGS (Simplified) -->
+    <!-- 7. SHOP & SETTINGS -->
     <div id="screen-shop" class="screen">
         <div class="p-4">
-            <button onclick="showScreen('dashboard')" class="mb-4 text-cyan-400">← Back</button>
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
             <h1 class="text-2xl font-bold mb-4 text-yellow-400">PREMIUM SHOP</h1>
             <div class="glass p-4 rounded-xl mb-4 border border-yellow-500/30">
                 <h3 class="font-bold text-lg text-yellow-300">VIP STATUS</h3>
                 <p class="text-xs text-gray-300 mb-2">2x Coins, Golden Name</p>
                 <button class="w-full btn-primary rounded p-2">BUY (500 Gems)</button>
             </div>
-             <div class="glass p-4 rounded-xl mb-4">
+            <div class="glass p-4 rounded-xl mb-4">
                 <h3 class="font-bold text-lg text-cyan-300">100 GEMS</h3>
                 <button class="w-full btn-secondary rounded p-2 mt-2">BUY ($0.99)</button>
             </div>
@@ -254,386 +179,33 @@
     </div>
 
     <div id="screen-settings" class="screen">
-         <div class="p-4">
-            <button onclick="showScreen('dashboard')" class="mb-4 text-cyan-400">← Back</button>
+        <div class="p-4">
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
             <h1 class="text-2xl font-bold mb-6">SETTINGS</h1>
             <button onclick="setLanguage('en')" class="w-full glass p-4 mb-2 text-left">🇬🇧 English</button>
             <button onclick="setLanguage('ru')" class="w-full glass p-4 mb-2 text-left">🇷🇺 Русский</button>
         </div>
     </div>
 
-    <!-- LOGIC SCRIPT -->
+    <script type="module" src="js/main.js"></script>
     <script>
-        // ==========================================
-        // 1. CONFIGURATION (ВСТАВЬ КЛЮЧИ СЮДА!)
-        // ==========================================
-        const ADMIN_IDS = [123456789, 987654321]; // Твои ID
-        const FIREBASE_CONFIG = {
-            apiKey: "AIzaSyDAZDTXCd6lEHGfaf-Z1p3YqH9l7efS2SA",
-            authDomain: "naval-combat-3152b.firebaseapp.com",
-            databaseURL: "https://naval-combat-3152b-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "naval-combat-3152b",
-            storageBucket: "naval-combat-3152b.firebasestorage.app",
-            messagingSenderId: "531335039248",
-            appId: "1:531335039248:web:afcfa187a297f4f7077d95",
-            measurementId: "G-80BSJYLDYE"
-        };
-
-        // ==========================================
-        // 2. STATE & TRANSLATIONS
-        // ==========================================
-        const TEXTS = {
-            en: {
-                welcome: "Welcome, Commander",
-                deploy: "DEPLOY",
-                create_battle: "CREATE BATTLE",
-                shop: "SHOP",
-                deploy_fleet: "Deploy Fleet",
-                select_ship: "Select Ship:",
-                ready: "READY FOR BATTLE",
-                waiting: "Waiting for opponent...",
-                your_turn: "YOUR TURN",
-                enemy_turn: "ENEMY TURN",
-                nick_placeholder: "Nickname..." // Английский вариант
-            },
-            ru: {
-                welcome: "Добро пожаловать",
-                deploy: "В БОЙ",
-                create_battle: "СОЗДАТЬ БИТВУ",
-                shop: "МАГАЗИН",
-                deploy_fleet: "Расстановка",
-                select_ship: "Выберите корабль:",
-                ready: "К БОЮ",
-                waiting: "Ждем противника...",
-                your_turn: "ВАШ ХОД",
-                enemy_turn: "ХОД ВРАГА",
-                nick_placeholder: "Ник..." // Русский вариант
-            }
-        };
-
-        let state = {
-            lang: 'en',
-            user: null,
-            gameId: null,
-            grid: Array(100).fill(null),
-            ships: [],
-            currentShipSize: 4,
-            orientation: 'h', // horizontal
-            shipsToPlace: [4, 3, 3, 2, 2, 2, 1, 1, 1, 1], // Standard rules
-            enemyGrid: Array(100).fill(null),
-            timerInterval: null
-        };
-
-        // ==========================================
-        // 3. CORE FUNCTIONS
-        // ==========================================
-        const db = (() => {
-            try {
-                firebase.initializeApp(FIREBASE_CONFIG);
-                return firebase.database();
-            } catch(e) { console.error("Firebase Error:", e); alert("Firebase keys missing!"); }
+        (function() {
+            setTimeout(function() {
+                if (typeof window.showScreen !== 'function') {
+                    window.showScreen = function(id) {
+                        document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+                        var el = document.getElementById(id && id.indexOf('screen-') === 0 ? id : 'screen-' + id);
+                        if (el) el.classList.add('active');
+                    };
+                }
+                if (typeof window.createBattle !== 'function') {
+                    window.createBattle = function() { alert('App is loading... Reload the page.'); };
+                }
+                if (typeof window.setLanguage !== 'function') {
+                    window.setLanguage = function() { alert('App is loading... Reload the page.'); };
+                }
+            }, 2000);
         })();
-
-        const tg = window.Telegram?.WebApp;
-        if(tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0a0a14'); }
-
-        function setLanguage(lang) {
-            state.lang = lang;
-            localStorage.setItem('lang', lang); // Сохраняем выбор
-
-            document.querySelectorAll('[data-key]').forEach(el => {
-                const key = el.getAttribute('data-key');
-                if(TEXTS[lang][key]) {
-                    // Если это поле ввода (input), меняем placeholder
-                    if (el.tagName === 'INPUT') {
-                        el.placeholder = TEXTS[lang][key];
-                    } else {
-                        // Для остальных элементов меняем текст
-                        el.textContent = TEXTS[lang][key];
-                    }
-                }
-            });
-
-            showScreen('screen-register');
-            if(state.user) showScreen('screen-dashboard');
-        }
-
-        function showScreen(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-        }
-
-        // ==========================================
-        // 4. AUTH & USER
-        // ==========================================
-        document.getElementById('btn-register').addEventListener('click', async () => {
-            const nickname = document.getElementById('input-nickname').value || "Player";
-            const userId = tg?.initDataUnsafe?.user?.id || Math.floor(Math.random()*1000000);
-
-            state.user = { id: userId, nickname, coins: 100, wins: 0, games: 0 };
-
-            // Check Admin
-            if(ADMIN_IDS.includes(userId)) document.getElementById('admin-btn').classList.remove('hidden');
-
-            // Save to DB
-            await db.ref('users/' + userId).update(state.user);
-            updateDash();
-
-            // Check if joined via link
-            const urlParams = new URLSearchParams(window.location.search);
-            const joinGameId = urlParams.get('startapp');
-            if(joinGameId) joinGame(joinGameId);
-            else showScreen('screen-dashboard');
-        });
-
-        function updateDash() {
-            document.getElementById('user-display-name').textContent = state.user.nickname;
-            document.getElementById('dash-coins').textContent = state.user.coins;
-            document.getElementById('dash-wins').textContent = state.user.wins;
-        }
-
-        // ==========================================
-        // 5. GAME LOGIC: CREATION & LOBBY
-        // ==========================================
-        async function createGame() {
-            const gameId = 'game_' + Date.now();
-            state.gameId = gameId;
-
-            await db.ref('games/' + gameId).set({
-                host: state.user.id,
-                status: 'waiting',
-                turn: null
-            });
-
-            // Show link
-            const link = `https://t.me/morskoy_boyyy_bot?startapp=${gameId}`;
-            document.getElementById('share-link-input').value = link;
-            document.getElementById('game-link-area').classList.remove('hidden');
-
-            // Listen for opponent
-            db.ref('games/' + gameId).on('value', snap => {
-                const game = snap.val();
-                if(game && game.guest) {
-                    startGamePlacement();
-                }
-            });
-        }
-
-        async function joinGame(gameId) {
-            state.gameId = gameId;
-            await db.ref('games/' + gameId).update({ guest: state.user.id, status: 'placement' });
-            startGamePlacement();
-        }
-
-        function startGamePlacement() {
-            showScreen('screen-placement');
-            renderPlacementGrid();
-            renderShipSelector();
-        }
-
-        // ==========================================
-        // 6. PLACEMENT LOGIC
-        // ==========================================
-        function renderPlacementGrid() {
-            const grid = document.getElementById('placement-grid');
-            grid.innerHTML = '';
-            state.grid.forEach((val, idx) => {
-                const cell = document.createElement('div');
-                cell.className = 'cell ' + (val ? 'ship' : '');
-                cell.onclick = () => placeCurrentShip(idx);
-                grid.appendChild(cell);
-            });
-        }
-
-        function rotateShip() {
-            state.orientation = state.orientation === 'h' ? 'v' : 'h';
-            if(tg) tg.HapticFeedback.impactOccurred('light');
-        }
-
-        function placeCurrentShip(idx) {
-            if(state.shipsToPlace.length === 0) return;
-            const size = state.shipsToPlace[0];
-            const row = Math.floor(idx / 10);
-            const col = idx % 10;
-            const cellsToOccupy = [];
-
-            // Check bounds & collision
-            for(let i=0; i<size; i++) {
-                let r = row, c = col;
-                if(state.orientation === 'h') c += i; else r += i;
-
-                if(r > 9 || c > 9) return; // Out of bounds
-                const targetIdx = r * 10 + c;
-                if(state.grid[targetIdx]) return; // Collision
-                cellsToOccupy.push(targetIdx);
-            }
-
-            // Place
-            cellsToOccupy.forEach(i => state.grid[i] = 's');
-            state.shipsToPlace.shift();
-            state.ships.push({ cells: cellsToOccupy, hits: 0 });
-
-            renderPlacementGrid();
-            renderShipSelector();
-
-            if(state.shipsToPlace.length === 0) {
-                const btn = document.getElementById('btn-ready');
-                btn.disabled = false;
-                btn.style.opacity = 1;
-            }
-            if(tg) tg.HapticFeedback.impactOccurred('medium');
-        }
-
-        function renderShipSelector() {
-            const div = document.getElementById('ship-selector');
-            div.innerHTML = state.shipsToPlace.map(s => `<div class="w-4 h-4 bg-cyan-400 rounded-sm"></div>`).join('');
-        }
-
-        async function confirmPlacement() {
-            document.getElementById('btn-ready').textContent = "WAITING...";
-            await db.ref(`games/${state.gameId}/players/${state.user.id}`).set({
-                grid: state.grid,
-                ready: true
-            });
-
-            // Check if both ready
-            db.ref(`games/${state.gameId}/players`).on('value', snap => {
-                const players = snap.val();
-                if(players && Object.keys(players).length === 2) {
-                    const allReady = Object.values(players).every(p => p.ready);
-                    if(allReady) initBattle(players);
-                }
-            });
-        }
-
-        // ==========================================
-        // 7. BATTLE LOGIC
-        // ==========================================
-        function initBattle(players) {
-            showScreen('screen-battle');
-            const pIds = Object.keys(players);
-            // First turn random
-            if(!players[pIds[0]].turn) {
-                 db.ref(`games/${state.gameId}`).update({ turn: pIds[Math.floor(Math.random()*2)] });
-            }
-
-            renderBattleGrids();
-
-            // Listen for turns and shots
-            db.ref(`games/${state.gameId}`).on('value', snap => {
-                const game = snap.val();
-                handleGameUpdate(game);
-            });
-        }
-
-        function handleGameUpdate(game) {
-            if(!game) return;
-
-            const isMyTurn = game.turn === state.user.id;
-            const turnText = isMyTurn ? TEXTS[state.lang].your_turn : TEXTS[state.lang].enemy_turn;
-            document.getElementById('turn-indicator').textContent = turnText;
-            document.getElementById('turn-indicator').style.color = isMyTurn ? '#00ffff' : '#ff00ff';
-
-            if(isMyTurn && tg) tg.HapticFeedback.notificationOccurred('success');
-
-            // Render Shots (Last Shot)
-            if(game.lastShot) {
-                updateGridVisuals(game.lastShot);
-            }
-
-            // Timer Logic (simplified)
-            resetTimer();
-        }
-
-        function resetTimer() {
-            clearInterval(state.timerInterval);
-            let time = 10;
-            document.getElementById('battle-timer').textContent = time;
-            state.timerInterval = setInterval(() => {
-                time--;
-                document.getElementById('battle-timer').textContent = time;
-                if(time <= 0) {
-                    clearInterval(state.timerInterval);
-                    // Skip turn logic here if you want
-                }
-            }, 1000);
-        }
-
-        function renderBattleGrids() {
-            // Enemy Grid
-            const eGrid = document.getElementById('enemy-grid');
-            eGrid.innerHTML = '';
-            for(let i=0; i<100; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                cell.dataset.idx = i;
-                cell.onclick = () => shoot(i);
-                eGrid.appendChild(cell);
-            }
-
-            // My Grid
-            const mGrid = document.getElementById('my-grid');
-            mGrid.innerHTML = '';
-            state.grid.forEach(val => {
-                const cell = document.createElement('div');
-                cell.className = 'cell ' + (val ? 'ship' : '');
-                mGrid.appendChild(cell);
-            });
-        }
-
-        async function shoot(idx) {
-            const game = (await db.ref(`games/${state.gameId}`).once('value')).val();
-            if(game.turn !== state.user.id) {
-                if(tg) tg.HapticFeedback.notificationOccurred('error');
-                return;
-            }
-
-            // Find opponent ID
-            const opponentId = game.host === state.user.id ? game.guest : game.host;
-
-            // Check hit via Firebase (In real secure app, use Cloud Functions. Here: client side trust)
-            const oppData = (await db.ref(`games/${state.gameId}/players/${opponentId}`).once('value')).val();
-            const isHit = oppData.grid[idx] === 's';
-
-            // Update Visuals locally first
-            const cell = document.querySelector(`#enemy-grid .cell[data-idx="${idx}"]`);
-            cell.className = `cell ${isHit ? 'hit' : 'miss'}`;
-
-            // Send to DB
-            await db.ref(`games/${state.gameId}`).update({
-                turn: isHit ? state.user.id : opponentId, // Hit = shoot again
-                lastShot: { idx, isHit, shooter: state.user.id }
-            });
-
-            if(isHit && tg) tg.HapticFeedback.impactOccurred('heavy');
-        }
-
-        function updateGridVisuals(shot) {
-            if(shot.shooter === state.user.id) return; // Already updated locally
-
-            // Update MY grid showing where enemy shot
-            const cell = document.querySelector(`#my-grid div:nth-child(${shot.idx + 1})`);
-            cell.className = `cell ${state.grid[shot.idx] ? 'ship hit' : 'miss'}`;
-
-            if(state.grid[shot.idx]) {
-                document.body.classList.add('shake');
-                setTimeout(()=>document.body.classList.remove('shake'), 500);
-            }
-        }
-
-        // ==========================================
-        // 8. ADMIN
-        // ==========================================
-        async function adminAddCurrency(type) {
-             const uid = document.getElementById('admin-user-id').value;
-             const amount = parseInt(document.getElementById('admin-amount').value);
-             const current = (await db.ref(`users/${uid}/${type}`).once('value')).val() || 0;
-             await db.ref(`users/${uid}/${type}`).set(current + amount);
-             alert('Done!');
-        }
-
-        // Initialize
-        if(localStorage.getItem('lang')) setLanguage(localStorage.getItem('lang'));
     </script>
 </body>
 </html>
