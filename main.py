@@ -18,8 +18,7 @@ WELCOME_IMAGE_PATH = os.getenv("WELCOME_IMAGE_PATH")
 raw_admin_ids = os.getenv("ADMIN_IDS", "")
 ADMIN_IDS = [int(i.strip()) for i in raw_admin_ids.split(",") if i.strip()]
 
-if not BOT_TOKEN:
-    exit("Ошибка: BOT_TOKEN не найден в файле .env")
+cached_welcome_file_id = None
 
 # 🚀 ЛОГИКА БОТА
 logging.basicConfig(level=logging.WARNING)
@@ -40,6 +39,8 @@ async def show_loading_animation():
 
 @dp.message(CommandStart())
 async def command_start_handler(message: types.Message, command: CommandObject):
+    global cached_welcome_file_id
+
     user_name = message.from_user.full_name
     start_arg = command.args
 
@@ -66,15 +67,29 @@ async def command_start_handler(message: types.Message, command: CommandObject):
     )
 
     try:
-        photo_file = FSInputFile(WELCOME_IMAGE_PATH)
-        await message.answer_photo(
-            photo=photo_file,
-            caption=caption_text,
-            parse_mode="HTML",
-            reply_markup=keyboard
-        )
+        if cached_welcome_file_id:
+            # Отправляем по File ID (Мгновенно)
+            await message.answer_photo(
+                photo=cached_welcome_file_id,
+                caption=caption_text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        else:
+            # Если ID еще нет, загружаем файл первый раз
+            photo_file = FSInputFile(WELCOME_IMAGE_PATH)
+            sent_message = await message.answer_photo(
+                photo=photo_file,
+                caption=caption_text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+            # Сохраняем ID последнего фото из списка (самое большое разрешение)
+            cached_welcome_file_id = sent_message.photo[-1].file_id
+            logging.info(f"Файл загружен и закэширован. ID: {cached_welcome_file_id}")
+
     except Exception as e:
-        logging.error(f"Не удалось отправить картинку: {e}")
+        logging.error(f"Ошибка при отправке фото: {e}")
         await message.answer(caption_text, parse_mode="HTML", reply_markup=keyboard)
 
 
