@@ -10,20 +10,72 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 </head>
 <body>
     <div class="ocean-bg"><div class="wave"></div><div class="wave"></div></div>
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 left-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- 0. ONBOARDING SCREEN -->
+    <div id="screen-onboarding" class="screen">
+        <div class="flex flex-col items-center justify-center min-h-screen p-6">
+            <div class="w-full max-w-md space-y-6">
+                <!-- Slide 1: Fleet Placement -->
+                <div id="onboarding-slide-1" class="onboarding-slide">
+                    <div class="glass rounded-2xl p-8 text-center">
+                        <div class="text-6xl mb-4">🚢</div>
+                        <h2 class="text-2xl font-bold mb-4 text-cyan-400" data-key="onboarding_slide1_title">FLEET PLACEMENT</h2>
+                        <p class="text-sm opacity-90 mb-6" data-key="onboarding_slide1_text">Place your ships on the board...</p>
+                    </div>
+                </div>
+                
+                <!-- Slide 2: Abilities -->
+                <div id="onboarding-slide-2" class="onboarding-slide hidden">
+                    <div class="glass rounded-2xl p-8 text-center">
+                        <div class="text-6xl mb-4">⚡</div>
+                        <h2 class="text-2xl font-bold mb-4 text-cyan-400" data-key="onboarding_slide2_title">TACTICAL ABILITIES</h2>
+                        <p class="text-sm opacity-90 mb-6" data-key="onboarding_slide2_text">Buy abilities in the shop...</p>
+                    </div>
+                </div>
+                
+                <!-- Slide 3: Rating -->
+                <div id="onboarding-slide-3" class="onboarding-slide hidden">
+                    <div class="glass rounded-2xl p-8 text-center">
+                        <div class="text-6xl mb-4">🏆</div>
+                        <h2 class="text-2xl font-bold mb-4 text-cyan-400" data-key="onboarding_slide3_title">RATING & ECONOMY</h2>
+                        <p class="text-sm opacity-90 mb-6" data-key="onboarding_slide3_text">Win matches to increase rating...</p>
+                    </div>
+                </div>
+                
+                <!-- Navigation -->
+                <div class="flex gap-2">
+                    <button id="onboarding-skip" class="flex-1 btn-secondary p-3 rounded text-sm" data-key="onboarding_skip">SKIP</button>
+                    <button id="onboarding-next" class="flex-1 btn-primary p-3 rounded text-sm" data-key="onboarding_next">NEXT</button>
+                    <button id="onboarding-start" class="flex-1 btn-primary p-3 rounded text-sm hidden" data-key="onboarding_start">START</button>
+                </div>
+                
+                <!-- Dots indicator -->
+                <div class="flex justify-center gap-2">
+                    <div id="onboarding-dot-1" class="w-2 h-2 rounded-full bg-cyan-400"></div>
+                    <div id="onboarding-dot-2" class="w-2 h-2 rounded-full bg-white/30"></div>
+                    <div id="onboarding-dot-3" class="w-2 h-2 rounded-full bg-white/30"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- 1. LANGUAGE SCREEN -->
     <div id="screen-language" class="screen active">
         <div class="flex flex-col items-center justify-center min-h-screen p-6">
-            <h1 class="text-5xl font-black orbitron text-cyan-400 mb-8 text-center neon-text">NAVAL<br>WARFARE</h1>
+            <h1 class="text-5xl font-black orbitron text-cyan-400 mb-8 text-center neon-text" data-key="app_title">NAVAL<br>WARFARE</h1>
             <div class="w-full max-w-sm space-y-4">
                 <button onclick="setLanguage('en')" class="w-full glass rounded-2xl p-6 flex items-center gap-4 active:scale-95 transition">
-                    <span class="text-4xl">🇬🇧</span> <span class="text-2xl font-bold">English</span>
+                    <span class="text-4xl">🇬🇧</span> <span class="text-2xl font-bold" data-key="lang_en">English</span>
                 </button>
                 <button onclick="setLanguage('ru')" class="w-full glass rounded-2xl p-6 flex items-center gap-4 active:scale-95 transition">
-                    <span class="text-4xl">🇷🇺</span> <span class="text-2xl font-bold">Русский</span>
+                    <span class="text-4xl">🇷🇺</span> <span class="text-2xl font-bold" data-key="lang_ru">Русский</span>
                 </button>
             </div>
         </div>
@@ -52,35 +104,55 @@
             </div>
             <div class="flex justify-between items-center mb-6 pt-2">
                 <div>
-                    <h1 class="text-2xl font-bold orbitron text-cyan-400">COMMAND</h1>
+                    <h1 class="text-2xl font-bold orbitron text-cyan-400" data-key="dashboard_command">COMMAND</h1>
                     <p id="user-display-name" class="text-sm opacity-70">Cadet</p>
                 </div>
                 <button onclick="showScreen('screen-settings')" class="glass p-2 rounded-lg text-cyan-400"><iconify-icon icon="lucide:settings" width="24"></iconify-icon></button>
             </div>
 
             <div class="glass rounded-2xl p-4 mb-6 flex justify-around text-center">
-                <div><div class="text-2xl font-bold text-yellow-400" id="dash-coins">0</div><div class="text-xs opacity-60">Coins</div></div>
-                <div><div class="text-2xl font-bold text-green-400" id="dash-wins">0</div><div class="text-xs opacity-60">Wins</div></div>
-                <div><div class="text-2xl font-bold text-pink-400" id="dash-winrate">0%</div><div class="text-xs opacity-60">WinRate</div></div>
+                <div><div class="text-2xl font-bold text-yellow-400" id="dash-coins">0</div><div class="text-xs opacity-60" data-key="stats_coins">Coins</div></div>
+                <div><div class="text-2xl font-bold text-green-400" id="dash-wins">0</div><div class="text-xs opacity-60" data-key="stats_wins">Wins</div></div>
+                <div><div class="text-2xl font-bold text-pink-400" id="dash-winrate">0%</div><div class="text-xs opacity-60" data-key="stats_winrate">WinRate</div></div>
             </div>
 
             <div class="space-y-3">
-                <button onclick="createBattle()" class="w-full btn-primary rounded-2xl py-5 font-bold text-lg flex items-center justify-center gap-3">
-                    <iconify-icon icon="lucide:swords" width="24"></iconify-icon> <span data-key="create_battle">CREATE BATTLE</span>
+                <button onclick="queueRandom()" class="w-full btn-primary rounded-2xl py-5 font-bold text-lg flex items-center justify-center gap-3">
+                    <iconify-icon icon="lucide:radar" width="24"></iconify-icon> <span data-key="play_random">PLAY RANDOM</span>
+                </button>
+                <button onclick="createBattle()" class="w-full btn-secondary rounded-2xl py-4 font-bold text-lg flex items-center justify-center gap-3">
+                    <iconify-icon icon="lucide:swords" width="20"></iconify-icon> <span data-key="create_battle">CREATE BATTLE</span>
                 </button>
                 <div id="game-link-area" class="hidden glass p-4 rounded-xl text-center">
-                    <p class="text-xs mb-2 text-cyan-400">Send this link to friend:</p>
+                    <p class="text-xs mb-2 text-cyan-400" data-key="share_link_label">Send this link to friend:</p>
                     <label for="share-link-input"></label>
                     <input id="share-link-input" readonly class="w-full bg-black/50 text-xs p-2 rounded mb-2 border border-cyan-500/30">
-                    <button onclick="copyGameLink()" class="btn-secondary px-4 py-1 rounded text-xs">COPY</button>
+                    <button onclick="copyGameLink()" class="btn-secondary px-4 py-1 rounded text-xs" data-key="share_link_copy">COPY</button>
                 </div>
 
-                <button onclick="showScreen('screen-shop')" class="w-full btn-secondary rounded-2xl py-4 font-bold flex items-center justify-center gap-3">
-                    <iconify-icon icon="lucide:shopping-bag" width="20"></iconify-icon> <span data-key="shop">SHOP</span>
-                </button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="showScreen('screen-shop')" class="w-full btn-secondary rounded-2xl py-4 font-bold flex items-center justify-center gap-3">
+                        <iconify-icon icon="lucide:shopping-bag" width="18"></iconify-icon> <span data-key="shop">SHOP</span>
+                    </button>
+                    <button onclick="openLeaderboards()" class="w-full btn-secondary rounded-2xl py-4 font-bold flex items-center justify-center gap-3">
+                        <iconify-icon icon="lucide:trophy" width="18"></iconify-icon> <span data-key="lb_title">LEADERBOARDS</span>
+                    </button>
+                </div>
             </div>
 
-            <button id="admin-btn" onclick="showScreen('screen-admin')" class="hidden w-full mt-4 border border-red-500/50 text-red-400 py-2 rounded-xl text-xs">ADMIN PANEL</button>
+            <button id="admin-btn" onclick="showScreen('screen-admin')" class="hidden w-full mt-4 border border-red-500/50 text-red-400 py-2 rounded-xl text-xs" data-key="admin_panel_button">ADMIN PANEL</button>
+        </div>
+    </div>
+
+    <!-- 3.5 MATCHMAKING SCREEN -->
+    <div id="screen-matchmaking" class="screen">
+        <div class="flex flex-col items-center justify-center min-h-screen p-6">
+            <div class="glass rounded-3xl p-8 w-full max-w-md text-center space-y-4">
+                <h2 class="text-2xl font-bold text-cyan-400" data-key="matchmaking_search_title">Searching for opponent...</h2>
+                <p class="text-xs text-gray-300" data-key="matchmaking_search_sub">We will find a fair enemy or start a bot battle.</p>
+                <div class="text-5xl font-black text-white" id="matchmaking-timer">10</div>
+                <button onclick="cancelMatchmaking()" class="w-full btn-secondary rounded-xl py-3 text-sm font-bold" data-key="matchmaking_cancel">CANCEL</button>
+            </div>
         </div>
     </div>
 
@@ -112,25 +184,25 @@
             <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back self-start mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
             <div class="flex justify-between items-center mb-4 glass p-2 rounded-xl">
                 <div class="text-center w-1/3">
-                    <div class="text-xs text-gray-400">YOU</div>
-                    <div class="font-bold text-cyan-400" id="my-status">ALIVE</div>
+                    <div class="text-xs text-gray-400" data-key="battle_you">YOU</div>
+                    <div class="font-bold text-cyan-400" id="my-status" data-key="battle_alive">ALIVE</div>
                 </div>
                 <div class="text-center w-1/3 text-2xl font-bold text-white" id="battle-timer">10</div>
                 <div class="text-center w-1/3">
-                    <div class="text-xs text-gray-400">ENEMY</div>
-                    <div class="font-bold text-pink-400" id="enemy-status">ALIVE</div>
+                    <div class="text-xs text-gray-400" data-key="battle_enemy">ENEMY</div>
+                    <div class="font-bold text-pink-400" id="enemy-status" data-key="battle_alive">ALIVE</div>
                 </div>
             </div>
 
-            <div class="text-center mb-2 text-sm font-bold" id="turn-indicator">WAITING...</div>
+            <div class="text-center mb-2 text-sm font-bold" id="turn-indicator" data-key="battle_waiting">WAITING...</div>
 
             <div class="glass rounded-2xl p-2 mb-4 relative">
-                <div class="absolute -top-3 left-2 text-xs bg-black px-2 text-pink-500">ENEMY WATERS</div>
+                <div class="absolute -top-3 left-2 text-xs bg-black px-2 text-pink-500" data-key="battle_enemy_waters">ENEMY WATERS</div>
                 <div id="enemy-grid" class="ship-grid"></div>
             </div>
 
             <div class="glass rounded-2xl p-2 mt-auto relative opacity-80 scale-90">
-                <div class="absolute -top-3 left-2 text-xs bg-black px-2 text-cyan-500">YOUR FLEET</div>
+                <div class="absolute -top-3 left-2 text-xs bg-black px-2 text-cyan-500" data-key="battle_your_fleet">YOUR FLEET</div>
                 <div id="my-grid" class="ship-grid"></div>
             </div>
         </div>
@@ -141,20 +213,70 @@
         <div class="p-4">
             <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
             <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-red-400">ADMIN</h2>
+                <h2 class="text-xl font-bold text-red-400" data-key="admin_title">ADMIN</h2>
             </div>
-            <div class="space-y-3">
-                <div class="glass p-4 rounded-xl">
-                    <p>Active Games: <span id="admin-active-games" class="font-bold">0</span></p>
+            <div class="space-y-4">
+                <div class="flex gap-2 mb-2">
+                    <button id="admin-tab-overview" class="flex-1 glass p-2 rounded text-xs" data-key="admin_tab_overview">Overview</button>
+                    <button id="admin-tab-matches" class="flex-1 glass p-2 rounded text-xs" data-key="admin_tab_matches">Matches</button>
+                    <button id="admin-tab-bans" class="flex-1 glass p-2 rounded text-xs" data-key="admin_tab_bans">Bans</button>
+                    <button id="admin-tab-logs" class="flex-1 glass p-2 rounded text-xs" data-key="admin_tab_logs">Logs</button>
                 </div>
-                <div class="glass p-4 rounded-xl">
-                    <label for="admin-user-id"></label>
-                    <input id="admin-user-id" placeholder="User ID" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
-                    <label for="admin-amount"></label>
-                    <input id="admin-amount" type="number" placeholder="Amount" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
-                    <div class="flex gap-2">
-                        <button onclick="adminAddCurrency('coins')" class="flex-1 btn-secondary p-2 rounded">Add Coins</button>
-                        <button onclick="adminAddCurrency('gems')" class="flex-1 btn-secondary p-2 rounded">Add Gems</button>
+
+                <!-- Overview -->
+                <div id="admin-panel-overview" class="space-y-3">
+                    <div class="glass p-4 rounded-xl">
+                        <p><span data-key="admin_active_games">Active Games</span>: <span id="admin-active-games" class="font-bold">0</span></p>
+                        <p><span data-key="admin_total_games">Total Games</span>: <span id="admin-total-games" class="font-bold">0</span></p>
+                        <p><span data-key="admin_human_wins">Human Wins</span>: <span id="admin-human-wins" class="font-bold">0</span></p>
+                        <p><span data-key="admin_bot_wins">Bot Wins</span>: <span id="admin-bot-wins" class="font-bold">0</span></p>
+                    </div>
+                    <div class="glass p-4 rounded-xl">
+                        <h3 class="font-bold mb-2 text-sm" data-key="admin_activity_title">Activity (last 24h)</h3>
+                        <ul id="admin-activity-list" class="text-xs space-y-1 max-h-40 overflow-y-auto"></ul>
+                    </div>
+                    <div class="glass p-4 rounded-xl">
+                        <label for="admin-user-id"></label>
+                        <input id="admin-user-id" data-key="admin_user_id_placeholder" placeholder="User ID" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
+                        <label for="admin-amount"></label>
+                        <input id="admin-amount" type="number" data-key="admin_amount_placeholder" placeholder="Amount" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
+                        <div class="flex gap-2 mb-2">
+                            <button onclick="adminAddCurrency('coins')" class="flex-1 btn-secondary p-2 rounded" data-key="admin_add_coins">Add Coins</button>
+                            <button onclick="adminAddCurrency('gems')" class="flex-1 btn-secondary p-2 rounded" data-key="admin_add_gems">Add Gems</button>
+                        </div>
+                        <button onclick="adminViewProfile()" class="w-full btn-primary p-2 rounded text-xs" data-key="admin_view_profile">View Profile</button>
+                    </div>
+                    <div id="admin-user-profile" class="glass p-4 rounded-xl text-xs space-y-2 max-h-64 overflow-y-auto hidden"></div>
+                </div>
+
+                <!-- Matches -->
+                <div id="admin-panel-matches" class="hidden space-y-3">
+                    <div class="glass p-4 rounded-xl">
+                        <h3 class="font-bold mb-2 text-sm" data-key="admin_recent_matches">Recent Matches</h3>
+                        <ul id="admin-matches-list" class="text-xs space-y-1 max-h-64 overflow-y-auto"></ul>
+                    </div>
+                </div>
+
+                <!-- Bans -->
+                <div id="admin-panel-bans" class="hidden space-y-3">
+                    <div class="glass p-4 rounded-xl">
+                        <h3 class="font-bold mb-2 text-sm" data-key="admin_tab_bans">Bans</h3>
+                        <ul id="admin-bans-list" class="text-xs space-y-2 max-h-64 overflow-y-auto"></ul>
+                    </div>
+                    <div class="glass p-4 rounded-xl">
+                        <label for="admin-ban-uid"></label>
+                        <input id="admin-ban-uid" data-key="admin_user_id_placeholder" placeholder="User ID" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
+                        <label for="admin-ban-reason"></label>
+                        <input id="admin-ban-reason" data-key="admin_ban_reason" placeholder="Reason" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
+                        <button onclick="adminBanUser()" class="w-full btn-secondary p-2 rounded text-xs" data-key="admin_ban">BAN</button>
+                    </div>
+                </div>
+
+                <!-- Logs -->
+                <div id="admin-panel-logs" class="hidden space-y-3">
+                    <div class="glass p-4 rounded-xl">
+                        <h3 class="font-bold mb-2 text-sm" data-key="admin_logs_title">Admin Logs</h3>
+                        <ul id="admin-logs-list" class="text-xs space-y-1 max-h-64 overflow-y-auto"></ul>
                     </div>
                 </div>
             </div>
@@ -165,25 +287,103 @@
     <div id="screen-shop" class="screen">
         <div class="p-4">
             <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
-            <h1 class="text-2xl font-bold mb-4 text-yellow-400">PREMIUM SHOP</h1>
-            <div class="glass p-4 rounded-xl mb-4 border border-yellow-500/30">
-                <h3 class="font-bold text-lg text-yellow-300">VIP STATUS</h3>
-                <p class="text-xs text-gray-300 mb-2">2x Coins, Golden Name</p>
-                <button class="w-full btn-primary rounded p-2">BUY (500 Gems)</button>
-            </div>
-            <div class="glass p-4 rounded-xl mb-4">
-                <h3 class="font-bold text-lg text-cyan-300">100 GEMS</h3>
-                <button class="w-full btn-secondary rounded p-2 mt-2">BUY ($0.99)</button>
+            <h1 class="text-2xl font-bold mb-4 text-yellow-400" data-key="shop_title">TACTICAL ABILITIES</h1>
+
+            <div class="space-y-3">
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_scout_title">SCOUT</div>
+                        <div class="text-xs text-gray-300" data-key="ability_scout_desc">Open 1 cell</div>
+                    </div>
+                    <button onclick="buyAbility('scout')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_scout_price">40 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_sonar_title">SONAR</div>
+                        <div class="text-xs text-gray-300" data-key="ability_sonar_desc">Scan 3x3 area</div>
+                    </div>
+                    <button onclick="buyAbility('sonar')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_sonar_price">60 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_doubleShot_title">DOUBLE SHOT</div>
+                        <div class="text-xs text-gray-300" data-key="ability_doubleShot_desc">Two shots in a row</div>
+                    </div>
+                    <button onclick="buyAbility('doubleShot')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_doubleShot_price">75 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_decoy_title">DECOY</div>
+                        <div class="text-xs text-gray-300" data-key="ability_decoy_desc">Next enemy shot misses</div>
+                    </div>
+                    <button onclick="buyAbility('decoy')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_decoy_price">50 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_radar_title">RADAR</div>
+                        <div class="text-xs text-gray-300" data-key="ability_radar_desc">Block repeated cells</div>
+                    </div>
+                    <button onclick="buyAbility('radar')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_radar_price">70 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_overheat_title">OVERHEAT</div>
+                        <div class="text-xs text-gray-300" data-key="ability_overheat_desc">Enemy skips a turn</div>
+                    </div>
+                    <button onclick="buyAbility('overheat')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_overheat_price">120 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_fog_title">FOG</div>
+                        <div class="text-xs text-gray-300" data-key="ability_fog_desc">Hide part of field</div>
+                    </div>
+                    <button onclick="buyAbility('fog')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_fog_price">80 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_counterStrike_title">COUNTER STRIKE</div>
+                        <div class="text-xs text-gray-300" data-key="ability_counterStrike_desc">Return shot on hit</div>
+                    </div>
+                    <button onclick="buyAbility('counterStrike')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_counterStrike_price">95 coins</button>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- 8. LEADERBOARDS -->
+    <div id="screen-leaderboards" class="screen">
+        <div class="p-4">
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
+            <h1 class="text-2xl font-bold mb-4 text-yellow-400" data-key="lb_title">LEADERBOARDS</h1>
+            <div class="flex gap-2 mb-3">
+                <button id="lb-tab-rating" class="flex-1 glass p-2 rounded text-xs">Rating</button>
+                <button id="lb-tab-winrate" class="flex-1 glass p-2 rounded text-xs">Winrate 30+</button>
+                <button id="lb-tab-games" class="flex-1 glass p-2 rounded text-xs">Games</button>
+            </div>
+            <div id="lb-panel-rating" class="glass p-3 rounded-xl mb-3 max-h-80 overflow-y-auto text-xs">
+                <ul id="lb-rating-list" class="space-y-1"></ul>
+            </div>
+            <div id="lb-panel-winrate" class="glass p-3 rounded-xl mb-3 max-h-80 overflow-y-auto text-xs hidden">
+                <ul id="lb-winrate-list" class="space-y-1"></ul>
+            </div>
+            <div id="lb-panel-games" class="glass p-3 rounded-xl mb-3 max-h-80 overflow-y-auto text-xs hidden">
+                <ul id="lb-games-list" class="space-y-1"></ul>
+            </div>
+        </div>
+    </div>
     <div id="screen-settings" class="screen">
         <div class="p-4">
             <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
-            <h1 class="text-2xl font-bold mb-6">SETTINGS</h1>
-            <button onclick="setLanguage('en')" class="w-full glass p-4 mb-2 text-left">🇬🇧 English</button>
-            <button onclick="setLanguage('ru')" class="w-full glass p-4 mb-2 text-left">🇷🇺 Русский</button>
+            <h1 class="text-2xl font-bold mb-6" data-key="settings_title">SETTINGS</h1>
+            <button onclick="setLanguage('en')" class="w-full glass p-4 mb-2 text-left">🇬🇧 <span data-key="settings_lang_en">English</span></button>
+            <button onclick="setLanguage('ru')" class="w-full glass p-4 mb-2 text-left">🇷🇺 <span data-key="settings_lang_ru">Русский</span></button>
         </div>
     </div>
 

@@ -3,7 +3,6 @@ import logging
 import sys
 import time
 import os
-import signal
 import json
 from pathlib import Path
 from dotenv import load_dotenv

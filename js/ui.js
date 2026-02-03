@@ -40,7 +40,7 @@ export function setLanguage(lang) {
     showScreen('screen-register');
     if (state.user) {
         showScreen('screen-dashboard');
-        setUser(state.user.id, { lang }).catch(() => {});
+        setUser(state.user.uid, { language: lang }).catch(() => {});
     }
 }
 
@@ -152,5 +152,33 @@ export function setBattleTimer(seconds) {
 export function showOpponentLeftMessage() {
     const key = state.lang === 'ru' ? 'opponent_left' : 'opponent_left';
     const msg = TEXTS[state.lang]?.opponent_left || 'Opponent left the game';
-    alert(msg);
+    showToast(msg, 'info');
+}
+
+/**
+ * Показать toast-уведомление (замена alert).
+ * @param {string} message - Текст сообщения
+ * @param {string} type - Тип: 'success', 'error', 'info' (по умолчанию 'info')
+ * @param {number} duration - Длительность в мс (по умолчанию 3000)
+ */
+export function showToast(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+    toast.innerHTML = `<span style="font-weight: bold; color: ${type === 'success' ? 'var(--neon-cyan)' : type === 'error' ? '#ff4444' : 'var(--neon-blue)'}">${icon}</span><span>${message}</span>`;
+    
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('toast-exit');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, duration);
 }

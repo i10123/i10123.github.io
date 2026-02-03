@@ -1,12 +1,12 @@
 /**
- * Регистрация и проверка пользователя. Авто-логин по Telegram ID или localStorage userId из Firebase.
+ * Регистрация и проверка пользователя.
+ * Используем Firebase Anonymous Auth + Telegram ID как внешнюю идентификацию.
  */
 
 import { state } from './state.js';
-import { ADMIN_IDS } from './config.js';
-import { getUser, setUser } from './database.js';
-import { showScreen } from './ui.js';
-import { updateDash } from './ui.js';
+import { ADMIN_IDS, ECONOMY, TEXTS } from './config.js';
+import { getUser, setUser, createUser, initFirebase } from './database.js';
+import { showScreen, updateDash, showToast } from './ui.js';
 
 let tg = null;
 
@@ -15,28 +15,44 @@ export function getTg() {
     return tg;
 }
 
-function applyUserToState(userData, userId) {
+async function ensureAnonAuth() {
+    initFirebase();
+    const auth = firebase.auth();
+    if (!auth.currentUser) {
+        await auth.signInAnonymously();
+    }
+    return auth.currentUser;
+}
+
+function applyUserToState(userData, uid) {
     state.user = {
-        id: userId,
+        uid,
+        telegramId: userData.telegramId || null,
         nickname: userData.nickname || 'Player',
-        coins: userData.coins ?? 100,
+        rating: userData.rating ?? ECONOMY.START_RATING,
+        coins: userData.coins ?? ECONOMY.START_COINS,
         wins: userData.wins ?? 0,
+        losses: userData.losses ?? 0,
         games: userData.games ?? 0,
-        lang: userData.lang || state.lang
+        banned: !!userData.banned,
+        abilities: userData.abilities || {},
+        language: userData.language || state.lang
     };
-    if (userData.lang) state.lang = userData.lang;
-    const numId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
-    if (!isNaN(numId) && ADMIN_IDS.includes(numId)) {
+    if (userData.language) state.lang = userData.language;
+
+    const tgid = state.user.telegramId;
+    if (tgid && ADMIN_IDS.includes(Number(tgid))) {
         const el = document.getElementById('admin-btn');
         if (el) el.classList.remove('hidden');
     }
-    localStorage.setItem('userId', String(userId));
+
+    localStorage.setItem('uid', String(uid));
     updateDash();
     showScreen('screen-dashboard');
 }
 
 /**
- * При загрузке: Telegram ID или localStorage userId — если пользователь есть в Firebase, сразу на dashboard.
+ * При загрузке: анонимный Firebase Auth, затем поиск пользователя по uid.
  */
 export async function tryAutoLogin() {
     tg = getTg();
@@ -46,33 +62,17 @@ export async function tryAutoLogin() {
         tg.setHeaderColor('#0a0a14');
     }
 
-    const telegramId = tg?.initDataUnsafe?.user?.id;
-    const savedUserId = localStorage.getItem('userId');
+    const authUser = await ensureAnonAuth();
+    const uid = authUser.uid;
 
-    // 1) Пробуем по Telegram ID
-    if (telegramId) {
-        try {
-            const userData = await getUser(telegramId);
-            if (userData && userData.nickname) {
-                applyUserToState(userData, telegramId);
-                return true;
-            }
-        } catch (e) {
-            console.warn('Auto-login (Telegram) failed:', e);
+    try {
+        const userData = await getUser(uid);
+        if (userData && userData.nickname) {
+            applyUserToState(userData, uid);
+            return true;
         }
-    }
-
-    // 2) Пробуем по сохранённому userId (браузер без Telegram или один и тот же юзер)
-    if (savedUserId) {
-        try {
-            const userData = await getUser(savedUserId);
-            if (userData && userData.nickname) {
-                applyUserToState(userData, savedUserId);
-                return true;
-            }
-        } catch (e) {
-            console.warn('Auto-login (saved userId) failed:', e);
-        }
+    } catch (e) {
+        console.warn('Auto-login failed:', e);
     }
 
     return false;
@@ -85,32 +85,45 @@ export async function registerUser() {
     const nicknameInput = document.getElementById('input-nickname');
     const nickname = (nicknameInput && nicknameInput.value.trim()) || 'Player';
     tg = getTg();
-    const userId = tg?.initDataUnsafe?.user?.id ?? Math.floor(Math.random() * 1000000);
+    const telegramId = tg?.initDataUnsafe?.user?.id ?? null;
 
-    state.user = {
-        id: userId,
+    const authUser = await ensureAnonAuth();
+    const uid = authUser.uid;
+
+    const baseUser = {
+        telegramId,
         nickname,
-        coins: 100,
-        wins: 0,
-        games: 0,
-        lang: state.lang
+        language: state.lang
     };
 
-    if (ADMIN_IDS.includes(userId)) {
-        const el = document.getElementById('admin-btn');
-        if (el) el.classList.remove('hidden');
-    }
-
     try {
-        await setUser(userId, state.user);
+        const existing = await getUser(uid);
+        if (existing) {
+            await setUser(uid, { ...baseUser, lastActive: Date.now() });
+            applyUserToState({ ...existing, ...baseUser }, uid);
+        } else {
+            await createUser(uid, baseUser);
+            applyUserToState(
+                {
+                    ...baseUser,
+                    rating: ECONOMY.START_RATING,
+                    coins: ECONOMY.START_COINS,
+                    wins: 0,
+                    losses: 0,
+                    games: 0,
+                    banned: false,
+                    abilities: {},
+                    achievements: {}
+                },
+                uid
+            );
+        }
     } catch (e) {
         console.error('Failed to save user:', e);
-        alert('Ошибка сохранения. Проверьте интернет и откройте приложение снова.');
+        const msg = TEXTS[state.lang]?.error_save_user || TEXTS.en.error_save_user;
+        showToast(msg, 'error');
         return;
     }
-
-    localStorage.setItem('userId', String(userId));
-    updateDash();
 
     const urlParams = new URLSearchParams(window.location.search);
     const joinGameId = urlParams.get('startapp');

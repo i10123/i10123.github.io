@@ -1,18 +1,68 @@
 {
   "rules": {
     "users": {
-      ".read": false,
       "$uid": {
-        ".read": true,
-        ".write": "newData != null && newData.hasChildren(['nickname', 'id'])"
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
       }
     },
+
     "games": {
-      ".read": false,
       "$gameId": {
-        ".read": true,
-        ".write": "newData == null || newData.hasChildren()"
+        ".read": "auth != null",
+        // Базовая защита: игру может создавать/обновлять только участник этой игры.
+        ".write": "auth != null && (
+          !data.exists() &&
+            newData.child('players').child('host').val() === auth.uid &&
+            // Проверка минимального рейтинга для ranked-игры (по возможности)
+            (!newData.child('ranked').val() || 
+             (!root.child('users').child(auth.uid).child('rating').exists() || 
+              root.child('users').child(auth.uid).child('rating').val() >= 25))
+          || data.exists() && (
+            data.child('players').child('host').val() === auth.uid ||
+            data.child('players').child('guest').val() === auth.uid ||
+            // bot-game: у бота нет auth, но хозяин матча должен иметь доступ
+            (data.child('players').child('host').val() === auth.uid &&
+              data.child('players').child('guest').isString() &&
+              data.child('players').child('guest').val().matches(/^bot:/))
+          )
+        )",
+        "boards": {
+          "$uid": {
+            "ships": {
+              // Корабли игрока может читать только он сам
+              ".read": "auth != null && auth.uid === $uid"
+            }
+          }
+        }
       }
+    },
+
+    "matchmakingQueue": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "stats": {
+      ".read": "auth != null",
+      ".write": false
+    },
+
+    "bans": {
+      ".read": false,
+      ".write": false
+    },
+
+    "adminLogs": {
+      ".read": false,
+      ".write": false
+    },
+
+    "clientErrors": {
+      ".read": false,
+      ".write": "auth != null"
     }
   }
 }

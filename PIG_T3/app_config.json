@@ -1,0 +1,22 @@
+{
+    "root_folder": "D:/for me/Morscoy_boy/i10123.github.io",
+    "extensions": ".py, .js, .css, .html",
+    "ignore_list": "PIG_T3, .git, .vs, .idea, __pycache__, venv, node_modules, .lock, obj, bin, build, dist, .vscode, log.txt, auto_migration_at_startup.py, collector.py, .env",
+    "output_name": "project_context",
+    "use_markdown": true,
+    "add_edit_prompt": true,
+    "auto_copy_file": true,
+    "line_numbers": true,
+    "ollama_model": "qwen2.5-coder:latest",
+    "ollama_options": {
+        "num_ctx": 24000,
+        "num_predict": 12000,
+        "temperature": 0.5,
+        "top_p": 0.95,
+        "top_k": 100
+    },
+    "ui_tree_expanded": [
+        "."
+    ],
+    "ui_tree_unchecked": []
+}

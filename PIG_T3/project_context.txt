@@ -1,0 +1,2352 @@
+PROJECT CONTEXT REPORT
+Generated: 2026-02-03 15:23:31
+Total Files: 14
+Total Lines: 2213
+
+INSTRUCTION FOR AI:
+This file contains the full source code of a project.
+The structure is provided in the <project_structure> tag.
+Each file's content is wrapped in a <file path="..."> tag.
+Use this context to understand the codebase.
+================================================================================
+
+<project_structure>
+├── config.py
+├── core
+│ ├── __init__.py
+│ ├── analyzer.py
+│ ├── ollama_client.py
+│ ├── patcher.py
+│ └── quality
+│  ├── __init__.py
+│  ├── models.py
+│  └── scanner.py
+├── gui
+│ ├── __init__.py
+│ ├── app.py
+│ └── tabs
+│  └── quality_tab.py
+├── scripts
+│ ├── common
+│ │ └── db (empty)
+│ └── modules
+│  └── administration
+│   ├── admin_commands (empty)
+│   └── promocodes_editor (empty)
+└── utils
+ ├── __init__.py
+ ├── clipboard.py
+ └── dep_installer.py
+</project_structure>
+
+================================================================================
+FILE CONTENTS
+================================================================================
+
+<file path="config.py">
+   1 | import os
+   2 | import sys
+   3 | import json
+   4 | 
+   5 | # Константа расширений
+   6 | EXTENSION_TO_MARKDOWN = {
+   7 |     '.cs': 'csharp', '.py': 'python', '.js': 'javascript', '.ts': 'typescript',
+   8 |     '.html': 'html', '.css': 'css', '.json': 'json', '.xml': 'xml', '.xaml': 'xml',
+   9 |     '.cpp': 'cpp', '.c': 'c', '.h': 'cpp', '.java': 'java', '.sql': 'sql',
+  10 |     '.sh': 'bash', '.bat': 'batch', '.txt': 'text', '.md': 'markdown',
+  11 |     '.vue': 'javascript', '.jsx': 'javascript', '.tsx': 'typescript',
+  12 |     '.go': 'go', '.rs': 'rust', '.php': 'php', '.rb': 'ruby'
+  13 | }
+  14 | 
+  15 | class ConfigManager:
+  16 |     def __init__(self):
+  17 |         # Определяем имя конфига на основе имени главного скрипта или фиксированное
+  18 |         self.config_file = "app_config.json"
+  19 |         self.default_config = {
+  20 |             "root_folder": os.path.dirname(os.getcwd()),
+  21 |             "extensions": ".py, .yml, .txt, .example",
+  22 |             "ignore_list": "PIG_T3, .git, .vs, .idea, __pycache__, venv, node_modules, .lock, obj, bin, build, dist, .vscode, log.txt, auto_migration_at_startup.py, project_context.txt, database, WORK_TIME, debug",
+  23 |             "output_name": "project_context",
+  24 |             "use_markdown": False,
+  25 |             "strict_mode": False,
+  26 |             "ignore_self": False,
+  27 |             "add_edit_prompt": False,
+  28 |             "auto_copy_file": False,
+  29 |             "line_numbers": False,
+  30 |             "use_sharp_indent": False,
+  31 |             "ollama_model": "None",
+  32 |             "ollama_options": {
+  33 |                 "num_ctx": 24000,
+  34 |                 "num_predict": 12000,
+  35 |                 "temperature": 0.5,
+  36 |                 "top_p": 0.95,
+  37 |                 "top_k": 100
+  38 |             },
+  39 |             "ui_tree_expanded": [],
+  40 |             "ui_tree_unchecked": []
+  41 |         }
+  42 | 
+  43 |     def load(self):
+  44 |         if os.path.exists(self.config_file):
+  45 |             try:
+  46 |                 with open(self.config_file, 'r', encoding='utf-8') as f:
+  47 |                     return {**self.default_config, **json.load(f)}
+  48 |             except Exception:
+  49 |                 return self.default_config
+  50 |         return self.default_config
+  51 | 
+  52 |     def save(self, data):
+  53 |         try:
+  54 |             with open(self.config_file, 'w', encoding='utf-8') as f:
+  55 |                 json.dump(data, f, indent=4, ensure_ascii=False)
+  56 |         except Exception as e:
+  57 |             print(f"Не удалось сохранить настройки: {e}")
+</file>
+
+<file path="core/__init__.py">
+
+</file>
+
+<file path="core/analyzer.py">
+   1 | import os
+   2 | import sys
+   3 | from datetime import datetime
+   4 | from PIG_T3.config import EXTENSION_TO_MARKDOWN
+   5 | 
+   6 | 
+   7 | class ProjectAnalyzer:
+   8 |     def get_markdown_lang(self, ext):
+   9 |         return EXTENSION_TO_MARKDOWN.get(ext.lower(), '')
+  10 | 
+  11 |     def generate_tree(self, file_paths):
+  12 |         tree = {}
+  13 |         for path in sorted(file_paths):
+  14 |             parts = path.split("/")
+  15 |             current = tree
+  16 |             for part in parts:
+  17 |                 current = current.setdefault(part, {})
+  18 |         lines = []
+  19 | 
+  20 |         def _build(node, prefix=""):
+  21 |             items = list(node.keys())
+  22 |             items.sort()
+  23 |             for i, item in enumerate(items):
+  24 |                 is_last = (i == len(items) - 1)
+  25 |                 connector = "└── " if is_last else "├── "
+  26 |                 lines.append(f"{prefix}{connector}{item}")
+  27 |                 if node[item]:
+  28 |                     ext = " " if is_last else "│ "
+  29 |                     _build(node[item], prefix + ext)
+  30 | 
+  31 |         _build(tree)
+  32 |         return "\n".join(lines)
+  33 | 
+  34 |     def _write_patching_instructions(self, f, line_numbers=False, use_sharp_indent=False):
+  35 |         instructions = [
+  36 |             "\n" + "=" * 80,
+  37 |             "SYSTEM INSTRUCTION: HOW TO MODIFY CODE (JSON FORMAT)",
+  38 |             "=" * 80,
+  39 |             "You are a coding assistant. To modify code, you MUST return the response strictly in JSON format.",
+  40 |             "Do not use old formats with separators. Use only the JSON structure described below.",
+  41 |             "",
+  42 |             "👉 RESPONSE STRUCTURE (JSON):",
+  43 |             "Return a list of operations within a root array. Example:",
+  44 |             "```json",
+  45 |             "[",
+  46 |             "  {",
+  47 |             "    \"action\": \"create\",",
+  48 |             "    \"path\": \"path/to/new_file.py\",",
+  49 |             "    \"content\": \"print('Hello World')\\n\"",
+  50 |             "  },",
+  51 |             "  {",
+  52 |             "    \"action\": \"delete\",",
+  53 |             "    \"path\": \"path/to/obsolete_file.py\"",
+  54 |             "  },",
+  55 |             "  {",
+  56 |             "    \"action\": \"edit\",",
+  57 |             "    \"path\": \"path/to/existing_file.py\",",
+  58 |             "    \"operations\": [",
+  59 |             "       {",
+  60 |             "         \"type\": \"replace_lines\",",
+  61 |             "         \"start\": 10, \"end\": 12,",
+  62 |             "         \"content\": \"    new_code_here()\\n    another_line()\"",
+  63 |             "       },",
+  64 |             "       {",
+  65 |             "         \"type\": \"replace_text\",",
+  66 |             "         \"find\": \"old_exact_string_code()\",",
+  67 |             "         \"replace\": \"new_exact_string_code()\"",
+  68 |             "       }",
+  69 |             "    ]",
+  70 |             "  }",
+  71 |             "]",
+  72 |             "```",
+  73 |             "",
+  74 |             "👉 OPERATIONS EXPLANATION:",
+  75 |             "1. **action: create** — Creates a new file (or overwrites it entirely). Requires 'content'.",
+  76 |             "2. **action: delete** — Deletes a file.",
+  77 |             "3. **action: edit** — Modifies an existing file. Requires 'operations' array.",
+  78 |             "   - **type: replace_lines**: Replaces lines from 'start' to 'end' (inclusive, 1-based numbering). Ideal if line numbers are enabled.",
+  79 |             "   - **type: insert_after_line**: Inserts 'content' strictly AFTER the specified 'line' number.",
+  80 |             "   - **type: replace_text**: Searches for an exact match of text 'find' and changes it to 'replace'. Pay attention to indentation.",
+  81 |             "",
+  82 |             "IMPORTANT: When using 'replace_lines', ensure line numbers correspond to the current context.",
+  83 |             "⚠️ VERY IMPORTANT: Do not include neighboring lines (context) in 'content' if you have not changed them and have not included them in the 'start'-'end' range. This leads to code duplication!"
+  84 |         ]
+  85 | 
+  86 |         f.write("\n".join(instructions))
+  87 | 
+  88 |     def scan_directory(self, config):
+  89 |         """
+  90 |         Scans the directory and returns a list of valid files and empty directories.
+  91 |         Used by both the GUI (for preview) and the Generator.
+  92 |         """
+  93 |         root_folder = config['root_folder']
+  94 |         extensions = [e.strip() for e in config['extensions'].split(',')]
+  95 |         ignore_list = [i.strip() for i in config['ignore_list'].split(',')]
+  96 |         strict_mode = config['strict_mode']
+  97 |         ignore_self = config.get("ignore_self", False)
+  98 |         
+  99 |         # Prepare forbidden paths
+ 100 |         forbidden_paths = set()
+ 101 |         if ignore_self:
+ 102 |             # Try to guess output file path to ignore it
+ 103 |             base_name = config.get('output_name', 'project_context')
+ 104 |             use_markdown = config.get('use_markdown', False)
+ 105 |             final_ext = ".md" if use_markdown else ".txt"
+ 106 |             if base_name.lower().endswith('.txt') or base_name.lower().endswith('.md'):
+ 107 |                 base_name = os.path.splitext(base_name)[0]
+ 108 |             output_file = os.path.join(root_folder, base_name + final_ext)
+ 109 |             
+ 110 |             forbidden_paths.add(os.path.normcase(os.path.abspath(output_file)))
+ 111 |             if config.get("config_path_abs"):
+ 112 |                 forbidden_paths.add(os.path.normcase(os.path.abspath(config['config_path_abs'])))
+ 113 |             script_path = os.path.abspath(sys.argv[0])
+ 114 |             forbidden_paths.add(os.path.normcase(script_path))
+ 115 | 
+ 116 |         if not os.path.exists(root_folder):
+ 117 |              return [], []
+ 118 | 
+ 119 |         paths_to_process = []
+ 120 |         empty_dirs = []
+ 121 | 
+ 122 |         for root, dirs, files in os.walk(root_folder):
+ 123 |             dirs[:] = [d for d in dirs if not any(ign in d for ign in ignore_list)]
+ 124 |             rel_root = os.path.relpath(root, root_folder)
+ 125 |             if rel_root != "." and any(ign in rel_root.split(os.sep) for ign in ignore_list):
+ 126 |                 continue
+ 127 |             
+ 128 |             has_valid_files = False
+ 129 |             for file in files:
+ 130 |                 full_path = os.path.join(root, file)
+ 131 |                 norm_path = os.path.normcase(os.path.abspath(full_path))
+ 132 |                 if norm_path in forbidden_paths: continue
+ 133 |                 if any(ign in file for ign in ignore_list): continue
+ 134 |                 
+ 135 |                 matched_ext = None
+ 136 |                 for ext_check in extensions:
+ 137 |                     if file.endswith(ext_check):
+ 138 |                         matched_ext = ext_check
+ 139 |                         break
+ 140 |                 
+ 141 |                 if matched_ext:
+ 142 |                     if strict_mode and '.' in file[:-len(matched_ext)]: continue
+ 143 |                     paths_to_process.append((full_path, matched_ext))
+ 144 |                     has_valid_files = True
+ 145 |             
+ 146 |             if not has_valid_files and not dirs and rel_root != ".":
+ 147 |                 empty_dirs.append(rel_root.replace("\\", "/"))
+ 148 |         
+ 149 |         return paths_to_process, empty_dirs
+ 150 | 
+ 151 |     def process(self, config, progress_callback=None):
+ 152 |         root_folder = config['root_folder']
+ 153 |         base_name = config['output_name']
+ 154 |         use_markdown = config['use_markdown']
+ 155 |         add_edit_prompt = config.get("add_edit_prompt", False)
+ 156 |         line_numbers = config.get("line_numbers", False)
+ 157 |         use_sharp_indent = config.get("use_sharp_indent", False)
+ 158 |         
+ 159 |         # Optional: List of specifically allowed files (from GUI checkboxes)
+ 160 |         # If None/Empty, assume all found files are allowed.
+ 161 |         # Изменено на Blacklist: список явно исключенных файлов (из GUI)
+ 162 |         # Если файла нет в excluded_paths, он считается включенным (полезно для новых файлов).
+ 163 |         excluded_paths_abs = config.get("excluded_paths", None)
+ 164 | 
+ 165 |         final_ext = ".md" if use_markdown else ".txt"
+ 166 |         if base_name.lower().endswith('.txt') or base_name.lower().endswith('.md'):
+ 167 |             base_name = os.path.splitext(base_name)[0]
+ 168 |         output_file = os.path.join(root_folder, base_name + final_ext)
+ 169 | 
+ 170 |         # 1. Scan files
+ 171 |         paths_to_process, empty_dirs = self.scan_directory(config)
+ 172 |         total_files_count = len(paths_to_process)
+ 173 |         files_data = []
+ 174 |         found_paths = []
+ 175 |         total_lines = 0
+ 176 | 
+ 177 |         for i, (full_path, ext) in enumerate(paths_to_process):
+ 178 |             rel_path = os.path.relpath(full_path, root_folder).replace("\\", "/")
+ 179 |             
+ 180 |             # Check if we should include CONTENT of this file
+ 181 |             # If allowed_paths_abs is set, we check if full_path is in it.
+ 182 |             include_content = True
+ 183 |             if excluded_paths_abs is not None:
+ 184 |                 if os.path.normcase(os.path.abspath(full_path)) in excluded_paths_abs:
+ 185 |                     include_content = False
+ 186 | 
+ 187 |             try:
+ 188 |                 if include_content:
+ 189 |                     with open(full_path, 'r', encoding='utf-8', errors='replace') as f:
+ 190 |                         content = f.read()
+ 191 |                 lines_count = len(content.splitlines())
+ 192 | 
+ 193 |                 # Нумерация строк полезна для JSON режима replace_lines
+ 194 |                 if line_numbers:
+ 195 |                     numbered_content = []
+ 196 |                     for num, line in enumerate(content.splitlines(), 1):
+ 197 |                         numbered_content.append(f"{num:4d} | {line}")
+ 198 |                     content = "\n".join(numbered_content)
+ 199 |                 else:
+ 200 |                     # File is in structure, but content is skipped
+ 201 |                     content = "(Content excluded by user selection)"
+ 202 |                     lines_count = 0
+ 203 | 
+ 204 |                 files_data.append({'path': rel_path, 'content': content, 'lines': lines_count, 'ext': ext, 'included': include_content})
+ 205 |                 found_paths.append(rel_path)
+ 206 |                 if include_content:
+ 207 |                     total_lines += lines_count
+ 208 |             except Exception as e:
+ 209 |                 print(f"Ошибка чтения {rel_path}: {e}")
+ 210 |             if progress_callback:
+ 211 |                 progress_callback(i + 1, total_files_count)
+ 212 | 
+ 213 |         files_data.sort(key=lambda x: x['path'])
+ 214 |         all_tree_paths = found_paths + [f"{d} (empty)" for d in sorted(empty_dirs)]
+ 215 |         tree_view = self.generate_tree(all_tree_paths)
+ 216 |         date_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+ 217 | 
+ 218 |         with open(output_file, 'w', encoding='utf-8') as f:
+ 219 |             if not use_markdown:
+ 220 |                 intro = (
+ 221 |                     f"PROJECT CONTEXT REPORT\n"
+ 222 |                     f"Generated: {date_str}\n"
+ 223 |                     f"Total Files: {len(files_data)}\n"
+ 224 |                     f"Total Lines: {total_lines}\n\n"
+ 225 |                     f"INSTRUCTION FOR AI:\n"
+ 226 |                     f"This file contains the full source code of a project.\n"
+ 227 |                     f"The structure is provided in the <project_structure> tag.\n"
+ 228 |                     f"Each file's content is wrapped in a <file path=\"...\"> tag.\n"
+ 229 |                     f"Use this context to understand the codebase.\n"
+ 230 |                     f"================================================================================\n\n"
+ 231 |                 )
+ 232 |                 f.write(intro)
+ 233 |                 f.write("<project_structure>\n")
+ 234 |                 f.write(tree_view)
+ 235 |                 f.write("\n</project_structure>\n\n")
+ 236 |                 f.write("================================================================================\n")
+ 237 |                 f.write("FILE CONTENTS\n")
+ 238 |                 f.write("================================================================================\n\n")
+ 239 |                 for item in files_data:
+ 240 |                     if not item['included']: continue
+ 241 |                     f.write(f"<file path=\"{item['path']}\">\n")
+ 242 |                     f.write(item['content'])
+ 243 |                     if not item['content'].endswith('\n'): f.write('\n')
+ 244 |                     f.write(f"</file>\n\n")
+ 245 |                 if add_edit_prompt: self._write_patching_instructions(f, line_numbers, use_sharp_indent)
+ 246 |             else:
+ 247 |                 toc_lines = ["## Оглавление"]
+ 248 |                 for i, item in enumerate(files_data, 1):
+ 249 |                     toc_lines.append(f"{i}. [{item['path']}](#file-{i})")
+ 250 |                 header = (
+ 251 |                     f"# PROJECT CONTEXT REPORT\n"
+ 252 |                     f"**Date:** {date_str} \n"
+ 253 |                     f"**Files:** {len(files_data)} | **Lines:** {total_lines}\n\n"
+ 254 |                     f"> **Note for AI:** This document contains the source code. Interpret the code blocks below according to their file paths.\n\n"
+ 255 |                     f"---\n### Project Structure\n```text\n{tree_view}\n```\n---\n"
+ 256 |                     f"{chr(10).join(toc_lines)}\n\n---\n"
+ 257 |                 )
+ 258 |                 f.write(header)
+ 259 |                 for i, item in enumerate(files_data, 1):
+ 260 |                     if not item['included']: continue
+ 261 |                     lang = self.get_markdown_lang(item['ext'])
+ 262 |                     block = (
+ 263 |                         f"\n<div id='file-{i}'></div>\n\n"
+ 264 |                         f"## {i}. {item['path']}\n"
+ 265 |                         f"> Lines: {item['lines']}\n\n"
+ 266 |                         f"```{lang}\n{item['content']}\n```\n---\n"
+ 267 |                     )
+ 268 |                     f.write(block)
+ 269 |                 if add_edit_prompt:
+ 270 |                     f.write("\n")
+ 271 |                     self._write_patching_instructions(f, line_numbers, use_sharp_indent)
+ 272 |                     f.write("\n")
+ 273 |         return output_file, len(files_data), total_lines
+</file>
+
+<file path="core/ollama_client.py">
+   1 | import json
+   2 | import sys
+   3 | import re
+   4 | import sys
+   5 | import requests
+   6 | from typing import Optional, Union, List
+   7 | 
+   8 | 
+   9 | def get_installed_models() -> List[str]:
+  10 |     """
+  11 |     Возвращает список установленных моделей из Ollama.
+  12 |     """
+  13 |     try:
+  14 |         response = requests.get("http://localhost:11434/api/tags", timeout=2)
+  15 |         if response.status_code == 200:
+  16 |             data = response.json()
+  17 |             models = [model['name'] for model in data.get('models', [])]
+  18 |             return sorted(models)
+  19 |     except Exception:
+  20 |         pass
+  21 |     return []
+  22 | 
+  23 | 
+  24 | class OllamaClient:
+  25 |     def __init__(self, model: str, options: dict = None):
+  26 |         self.model = model
+  27 |         self.options = options or {}
+  28 |         # Параметры отладки как в запросе
+  29 |         self.debug_prompt = False
+  30 |         self.debug_thinking = False
+  31 |         self.debug_answer = False
+  32 | 
+  33 |     def fix_json(self, malformed_text: str) -> str:
+  34 |         """
+  35 |         Синхронная обертка для отправки запроса на исправление JSON.
+  36 |         """
+  37 |         prompt = f'''Fix the following JSON
+  38 | Pay special attention to the SCREENING and BALANCING of brackets, quotation marks, etc.
+  39 | Output ONLY fixed JSON
+  40 | Do NOT DELETE/CHANGE/ADD any INFORMATION or FIELDS!
+  41 | {malformed_text}'''
+  42 |         
+  43 |         if self.debug_prompt:
+  44 |             print("Prompt:\n-----------------------------------------------------------\n" + prompt + "\n-----------------------------------------------------------\n")
+  45 | 
+  46 |         url = "http://localhost:11434/api/chat"
+  47 |         
+  48 |         payload = {
+  49 |             "model": self.model,
+  50 |             "messages": [{"role": "user", "content": prompt}],
+  51 |             "stream": True,
+  52 |             "options": self.options,
+  53 |             "format": "",  # ОБЯЗАТЕЛЬНО JSON
+  54 |         }
+  55 | 
+  56 |         collected_content = []
+  57 |         collected_thinking = []
+  58 | 
+  59 |         is_printing_thinking = False
+  60 |         is_printing_answer = False
+  61 | 
+  62 |         try:
+  63 |             with requests.post(url, json=payload, stream=True) as r:
+  64 |                 r.raise_for_status()
+  65 | 
+  66 |                 for line in r.iter_lines():
+  67 |                     if not line:
+  68 |                         continue
+  69 | 
+  70 |                     try:
+  71 |                         chunk = json.loads(line.decode('utf-8'))
+  72 |                     except json.JSONDecodeError:
+  73 |                         continue
+  74 | 
+  75 |                     msg = chunk.get('message', {})
+  76 | 
+  77 |                     # --- Обработка Thinking ---
+  78 |                     val_thinking = msg.get('thinking', '')
+  79 |                     if val_thinking:
+  80 |                         collected_thinking.append(val_thinking)
+  81 |                         if self.debug_thinking:
+  82 |                             if not is_printing_thinking:
+  83 |                                 print("Thinking:\n-----------------------------------------------------------")
+  84 |                                 is_printing_thinking = True
+  85 |                             sys.stdout.write(val_thinking)
+  86 |                             sys.stdout.flush()
+  87 | 
+  88 |                     # --- Обработка Content ---
+  89 |                     current_content_chunk = msg.get('content', '')
+  90 |                     
+  91 |                     # Обработка tool_calls (на всякий случай, хотя здесь json format)
+  92 |                     if 'tool_calls' in msg and msg['tool_calls']:
+  93 |                         for tool in msg['tool_calls']:
+  94 |                             func = tool.get('function', {})
+  95 |                             args = func.get('arguments', '')
+  96 |                             if isinstance(args, str):
+  97 |                                 current_content_chunk += args
+  98 |                             elif isinstance(args, dict):
+  99 |                                 current_content_chunk += json.dumps(args)
+ 100 | 
+ 101 |                     if current_content_chunk:
+ 102 |                         collected_content.append(current_content_chunk)
+ 103 |                         if self.debug_answer:
+ 104 |                             if is_printing_thinking and not is_printing_answer:
+ 105 |                                 print("\n-----------------------------------------------------------\n")
+ 106 |                                 is_printing_thinking = False
+ 107 |                             if not is_printing_answer:
+ 108 |                                 print("Answer:\n-----------------------------------------------------------")
+ 109 |                                 is_printing_answer = True
+ 110 |                             sys.stdout.write(current_content_chunk)
+ 111 |                             sys.stdout.flush()
+ 112 | 
+ 113 |             # Завершение стриминга
+ 114 |             if is_printing_thinking:
+ 115 |                 print("\n-----------------------------------------------------------\n")
+ 116 |             elif is_printing_answer:
+ 117 |                 print("\n-----------------------------------------------------------\n")
+ 118 | 
+ 119 |             final_text = "".join(collected_content).strip()
+ 120 |             
+ 121 |             # Автоматическая очистка Markdown обертки, если модель вернула ```json ... ```
+ 122 |             md_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', final_text, re.IGNORECASE)
+ 123 |             if md_match:
+ 124 |                 final_text = md_match.group(1).strip()
+ 125 | 
+ 126 |             return final_text
+ 127 | 
+ 128 |         except Exception as e:
+ 129 |             print(f"Ollama Error: {e}")
+ 130 |             return ""
+</file>
+
+<file path="core/patcher.py">
+   1 | import os
+   2 | import json
+   3 | import re
+   4 | 
+   5 | 
+   6 | def clean_json_text(text):
+   7 |     """
+   8 |     Пытается очистить текст от Markdown оберток ```json ... ``` и найти валидный JSON список.
+   9 |     """
+  10 |     text = text.strip()
+  11 | 
+  12 |     # Поиск блока JSON внутри Markdown
+  13 |     json_match = re.search(r'```(?:json)?\s*(\[.*\])\s*```', text, re.DOTALL)
+  14 |     if json_match:
+  15 |         return json_match.group(1)
+  16 | 
+  17 |     # Если просто массив начинается с [ и заканчивается ]
+  18 |     list_match = re.search(r'(\[\s*{.*}\s*\])', text, re.DOTALL)
+  19 |     if list_match:
+  20 |         return list_match.group(1)
+  21 | 
+  22 |     return text
+  23 | 
+  24 | 
+  25 | def apply_llm_changes(llm_response: str, root_folder: str = "."):
+  26 |     """
+  27 |     Применяет изменения на основе JSON-ответа от LLM.
+  28 |     Поддерживает действия: create, delete, edit.
+  29 |     """
+  30 |     changes_log = []
+  31 | 
+  32 |     try:
+  33 |         clean_json = clean_json_text(llm_response)
+  34 |         actions = json.loads(clean_json)
+  35 |     except json.JSONDecodeError as e:
+  36 |         return f"❌ Ошибка парсинга JSON: {str(e)}\nУбедитесь, что LLM вернула корректный JSON список."
+  37 |     except Exception as e:
+  38 |         return f"❌ Критическая ошибка обработки: {str(e)}"
+  39 | 
+  40 |     if not isinstance(actions, list):
+  41 |         return "❌ JSON должен быть списком объектов (операций)."
+  42 | 
+  43 |     success_count = 0
+  44 | 
+  45 |     for action in actions:
+  46 |         action_type = action.get('action')
+  47 |         rel_path = action.get('path')
+  48 | 
+  49 |         if not action_type or not rel_path:
+  50 |             changes_log.append("⚠️ Пропущен action или path в блоке.")
+  51 |             continue
+  52 | 
+  53 |         # Нормализация пути
+  54 |         abs_path = os.path.join(root_folder, rel_path)
+  55 | 
+  56 |         # --- CREATE ---
+  57 |         if action_type == 'create':
+  58 |             content = action.get('content')
+  59 |             if content is None:
+  60 |                 changes_log.append(f"⚠️ Create: нет контента для {rel_path}")
+  61 |                 continue
+  62 |             try:
+  63 |                 os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+  64 |                 with open(abs_path, 'w', encoding='utf-8') as f:
+  65 |                     f.write(content)
+  66 |                 changes_log.append(f"✅ CREATE: {rel_path}")
+  67 |                 success_count += 1
+  68 |             except Exception as e:
+  69 |                 changes_log.append(f"❌ Create Error {rel_path}: {e}")
+  70 | 
+  71 |         # --- DELETE ---
+  72 |         elif action_type == 'delete':
+  73 |             if os.path.exists(abs_path):
+  74 |                 try:
+  75 |                     os.remove(abs_path)
+  76 |                     changes_log.append(f"🗑️ DELETE: {rel_path}")
+  77 |                     success_count += 1
+  78 |                 except Exception as e:
+  79 |                     changes_log.append(f"❌ Delete Error {rel_path}: {e}")
+  80 |             else:
+  81 |                 changes_log.append(f"⚠️ Delete: файл не найден {rel_path}")
+  82 | 
+  83 |         # --- EDIT ---
+  84 |         elif action_type == 'edit':
+  85 |             if not os.path.exists(abs_path):
+  86 |                 changes_log.append(f"❌ Edit: файл не найден {rel_path}")
+  87 |                 continue
+  88 | 
+  89 |             operations = action.get('operations', [])
+  90 |             if not operations:
+  91 |                 changes_log.append(f"⚠️ Edit: нет операций для {rel_path}")
+  92 |                 continue
+  93 | 
+  94 |             try:
+  95 |                 try:
+  96 |                     with open(abs_path, 'r', encoding='utf-8') as f:
+  97 |                         lines = f.readlines()
+  98 |                 except UnicodeDecodeError:
+  99 |                     # Если файл в UTF-16 (например, вывод PowerShell/Windows), пробуем эту кодировку
+ 100 |                     with open(abs_path, 'r', encoding='utf-16', errors='replace') as f:
+ 101 |                         lines = f.readlines()
+ 102 | 
+ 103 |                 file_changed = False
+ 104 | 
+ 105 |                 # Сортируем операции замены строк с конца, чтобы не сбить индексы
+ 106 |                 # Сортируем операции замены строк и вставки с конца, чтобы не сбить индексы
+ 107 |                 # Группируем операции, завязанные на номера строк
+ 108 |                 line_ops = [op for op in operations if op.get('type') in ('replace_lines', 'insert_after_line')]
+ 109 |                 
+ 110 |                 def get_op_line(op):
+ 111 |                     if op.get('type') == 'replace_lines':
+ 112 |                         return op.get('start', 0)
+ 113 |                     return op.get('line', 0)
+ 114 | 
+ 115 |                 line_ops.sort(key=get_op_line, reverse=True)
+ 116 | 
+ 117 |                 text_ops = [op for op in operations if op.get('type') == 'replace_text']
+ 118 | 
+ 119 |                 # 1. Сначала применяем замены/вставки по номерам строк (с конца)
+ 120 |                 for op in line_ops:
+ 121 |                     op_type = op.get('type')
+ 122 |                     new_content = op.get('content', "")
+ 123 |                     if new_content is None: new_content = ""
+ 124 |                     
+ 125 |                     # Подготовка контента (добавление переноса строки если нет)
+ 126 |                     new_lines_list = new_content.splitlines(keepends=True)
+ 127 |                     if new_lines_list and not new_lines_list[-1].endswith(('\n', '\r')):
+ 128 |                         new_lines_list[-1] += '\n'
+ 129 | 
+ 130 |                     # --- LOGIC: REPLACE LINES ---
+ 131 |                     if op_type == 'replace_lines':
+ 132 |                         start = op.get('start')
+ 133 |                         end = op.get('end')
+ 134 |                         if start is None or end is None: continue
+ 135 | 
+ 136 |                         # Convert 1-based to 0-based
+ 137 |                         idx_start = max(0, start - 1)
+ 138 |                         idx_end = min(len(lines), end)
+ 139 | 
+ 140 |                         if idx_start > len(lines):
+ 141 |                             changes_log.append(f"⚠️ Line Error {rel_path}: строки {start}-{end} вне диапазона.")
+ 142 |                             continue
+ 143 | 
+ 144 |                         # --- Anti-Duplication Logic ---
+ 145 |                         # Удаляем дубликат сверху
+ 146 |                         if idx_start > 0 and new_lines_list:
+ 147 |                             if lines[idx_start - 1].rstrip('\r\n') == new_lines_list[0].rstrip('\r\n'):
+ 148 |                                 new_lines_list.pop(0)
+ 149 |                         # Удаляем дубликат снизу
+ 150 |                         if idx_end < len(lines) and new_lines_list:
+ 151 |                             if lines[idx_end].rstrip('\r\n') == new_lines_list[-1].rstrip('\r\n'):
+ 152 |                                 new_lines_list.pop(-1)
+ 153 |                         # ------------------------------
+ 154 | 
+ 155 |                         lines[idx_start:idx_end] = new_lines_list
+ 156 |                         file_changed = True
+ 157 |                         changes_log.append(f"✏️ Line Patch {rel_path}: строки {start}-{end}")
+ 158 |                     
+ 159 |                     # --- LOGIC: INSERT AFTER LINE ---
+ 160 |                     elif op_type == 'insert_after_line':
+ 161 |                         line_idx = op.get('line')
+ 162 |                         if line_idx is None: continue
+ 163 |                         
+ 164 |                         # Индекс списка (0-based) = Номер строки (1-based)
+ 165 |                         # Пример: Вставить после строки 1. Список индексы: 0. insert(1, ...) вставит после 0.
+ 166 |                         insert_at = max(0, line_idx)
+ 167 |                         if insert_at > len(lines):
+ 168 |                              insert_at = len(lines)
+ 169 | 
+ 170 |                         lines[insert_at:insert_at] = new_lines_list
+ 171 |                         file_changed = True
+ 172 |                         changes_log.append(f"➕ Insert {rel_path}: после строки {line_idx}")
+ 173 |                 # 2. Теперь применяем текстовые замены (по полному содержимому)
+ 174 |                 if text_ops:
+ 175 |                     full_text = "".join(lines)
+ 176 |                     for op in text_ops:
+ 177 |                         find_str = op.get('find')
+ 178 |                         replace_str = op.get('replace')
+ 179 |                         if find_str and replace_str is not None:
+ 180 |                             if find_str in full_text:
+ 181 |                                 full_text = full_text.replace(find_str, replace_str)
+ 182 |                                 file_changed = True
+ 183 |                                 changes_log.append(f"✏️ Text Patch {rel_path}: замена фрагмента")
+ 184 |                             else:
+ 185 |                                 changes_log.append(f"⚠️ Text Patch {rel_path}: фрагмент не найден")
+ 186 |                     lines = full_text.splitlines(keepends=True)
+ 187 | 
+ 188 |                 if file_changed:
+ 189 |                     with open(abs_path, 'w', encoding='utf-8') as f:
+ 190 |                         f.writelines(lines)
+ 191 |                     success_count += 1
+ 192 |                 else:
+ 193 |                     changes_log.append(f"ℹ️ Edit {rel_path}: изменений не было.")
+ 194 | 
+ 195 |             except Exception as e:
+ 196 |                 changes_log.append(f"❌ Edit Error {rel_path}: {e}")
+ 197 | 
+ 198 |     return "\n".join(changes_log) if changes_log else "⚠️ Нет действий для выполнения."
+</file>
+
+<file path="core/quality/__init__.py">
+   1 | from .scanner import ProjectScanner
+   2 | from .models import FileMetrics, Issue
+</file>
+
+<file path="core/quality/models.py">
+   1 | from dataclasses import dataclass, field
+   2 | from typing import List
+   3 | 
+   4 | @dataclass
+   5 | class Issue:
+   6 |     tool: str
+   7 |     msg: str
+   8 |     line: int
+   9 |     severity: str = "info"  # info, warning, error
+  10 | 
+  11 | @dataclass
+  12 | class FileMetrics:
+  13 |     path: str
+  14 |     sloc: int = 0
+  15 |     complexity: float = 1.0  # Default 1.0 (lowest complexity)
+  16 |     maintainability: float = 0.0  # Default 0.0 (Worst case to indicate scan failure/issue)
+  17 |     pylint_score: float = 10.0  # Starts perfect, penalties apply
+  18 |     security_issues: int = 0
+  19 |     issues: List[Issue] = field(default_factory=list)
+  20 |     
+  21 |     @property
+  22 |     def status_cc(self) -> str:
+  23 |         # Radon CC: A(1-5), B(6-10), C(11-20), D(21-30), E(31-40), F(41+)
+  24 |         # Simplified: Green <= 10, Yellow <= 20, Red > 20
+  25 |         if self.complexity <= 10:
+  26 |             return "green"
+  27 |         if self.complexity <= 20:
+  28 |             return "yellow"
+  29 |         return "red"
+  30 | 
+  31 |     @property
+  32 |     def status_mi(self) -> str:
+  33 |         # Radon MI: 100-20 (A/B/C) is generally acceptable.
+  34 |         # < 20 is Bad. 
+  35 |         # We set boundaries: > 20 is Green, > 10 Yellow, <= 10 Red.
+  36 |         if self.maintainability >= 20:
+  37 |             return "green"
+  38 |         if self.maintainability >= 10:
+  39 |             return "yellow"
+  40 |         return "red"
+  41 | 
+  42 |     @property
+  43 |     def status_pylint(self) -> str:
+  44 |         # Pylint: > 8 Green, > 5 Yellow, <= 5 Red
+  45 |         if self.pylint_score >= 8.0:
+  46 |             return "green"
+  47 |         if self.pylint_score >= 5.0:
+  48 |             return "yellow"
+  49 |         return "red"
+  50 | 
+  51 |     @property
+  52 |     def status_security(self) -> str:
+  53 |         # Any High/Medium issue is Red.
+  54 |         if self.security_issues == 0:
+  55 |             return "green"
+  56 |         if self.security_issues < 2:
+  57 |             return "yellow"
+  58 |         return "red"
+  59 |     def get_status_for_column(self, col: str) -> str:
+  60 |         # Returns status color based on the specific column key
+  61 |         if col == "sloc": return "green"  # Always green/neutral for lines count
+  62 |         if col == "cc": return self.status_cc
+  63 |         if col == "mi": return self.status_mi
+  64 |         if col == "score": return self.status_pylint
+  65 |         if col == "sec": return self.status_security
+  66 |         return self.overall_status
+  67 | 
+  68 |     @property
+  69 |     def overall_status(self) -> str:
+  70 |         statuses = [self.status_cc, self.status_mi, self.status_pylint, self.status_security]
+  71 |         if "red" in statuses:
+  72 |             return "red"
+  73 |         if "yellow" in statuses:
+  74 |             return "yellow"
+  75 |         return "green"
+</file>
+
+<file path="core/quality/scanner.py">
+   1 | import os
+   2 | import sys
+   3 | import json
+   4 | import subprocess
+   5 | from typing import Dict, List
+   6 | from .models import FileMetrics, Issue
+   7 | 
+   8 | 
+   9 | class ProjectScanner:
+  10 |     def __init__(self, root_path: str):
+  11 |         self.root = os.path.abspath(root_path)
+  12 |         self.python_exe = sys.executable
+  13 | 
+  14 |     def _get_rel_path(self, path: str) -> str:
+  15 |         """
+  16 |         Robustly converts absolute or mixed paths to a relative path from project root.
+  17 |         Handles Windows case-insensitivity and different separators.
+  18 |         """
+  19 |         try:
+  20 |             abs_path = os.path.abspath(path)
+  21 |             rel = os.path.relpath(abs_path, self.root)
+  22 |             if rel.startswith("..") and os.name == 'nt':
+  23 |                 return path.replace("\\", "/")
+  24 |             return rel.replace("\\", "/")
+  25 |         except Exception:
+  26 |             return path.replace("\\", "/")
+  27 | 
+  28 |     def _resolve_and_normalize(self, filename: str) -> str:
+  29 |         """
+  30 |         Resolves a filename from tool output to the normalized project dictionary key.
+  31 |         """
+  32 |         if os.path.isabs(filename):
+  33 |             return self._normalize_key(filename)
+  34 |         return self._normalize_key(os.path.join(self.root, filename))
+  35 | 
+  36 |     def _normalize_key(self, path: str) -> str:
+  37 |         try:
+  38 |             abs_path = os.path.abspath(path)
+  39 |             rel = os.path.relpath(abs_path, self.root)
+  40 |             if rel.startswith(".."):
+  41 |                 res = path.replace("\\", "/")
+  42 |                 return res.lower() if os.name == 'nt' else res
+  43 | 
+  44 |             if os.name == 'nt':
+  45 |                 rel = rel.lower()
+  46 |             return rel.replace("\\", "/")
+  47 |         except Exception:
+  48 |             return path.replace("\\", "/")
+  49 | 
+  50 |     def scan(self, progress_callback=None) -> List[FileMetrics]:
+  51 |         results_map: Dict[str, FileMetrics] = {}
+  52 |         final_results: List[FileMetrics] = []
+  53 | 
+  54 |         # 1. Folders to skip to prevent freezing on huge env directories
+  55 |         SKIP_DIRS = {'venv', '.venv', 'node_modules', '.git', '__pycache__', '.idea', '.vscode', 'build', 'dist', 'bin', 'obj'}
+  56 | 
+  57 |         python_files_abs = []
+  58 | 
+  59 |         def notify(percent, msg):
+  60 |             if progress_callback:
+  61 |                 progress_callback(percent, msg)
+  62 | 
+  63 |         # 2. Structure Scan
+  64 |         notify(5, "Сканирование структуры...")
+  65 | 
+  66 |         for root, dirs, files in os.walk(self.root):
+  67 |             # Modify dirs in-place to skip unwanted folders
+  68 |             dirs[:] = [d for d in dirs if d.lower() not in SKIP_DIRS]
+  69 | 
+  70 |             for file in files:
+  71 |                 if file.endswith(".py"):
+  72 |                     full_path = os.path.join(root, file)
+  73 |                     python_files_abs.append(full_path)
+  74 | 
+  75 |                     rel_path = self._get_rel_path(full_path)
+  76 |                     norm_key = self._normalize_key(full_path)
+  77 | 
+  78 |                     metric = FileMetrics(path=rel_path)
+  79 |                     results_map[norm_key] = metric
+  80 |                     final_results.append(metric)
+  81 | 
+  82 |                     # Calculate SLOC
+  83 |                     try:
+  84 |                         with open(full_path, 'r', encoding='utf-8', errors='ignore') as f:
+  85 |                             metric.sloc = sum(1 for line in f if line.strip() and not line.strip().startswith('#'))
+  86 |                     except:
+  87 |                         metric.sloc = 0
+  88 | 
+  89 |         total_files = len(python_files_abs)
+  90 |         if total_files == 0:
+  91 |             notify(100, "Python файлы не найдены.")
+  92 |             return []
+  93 | 
+  94 |         print(f"[DEBUG] Found {total_files} python files to scan.")
+  95 | 
+  96 |         # Chunking logic to avoid command line length limits and freezing
+  97 |         chunk_size = 50
+  98 |         chunks = [python_files_abs[i:i + chunk_size] for i in range(0, len(python_files_abs), chunk_size)]
+  99 | 
+ 100 |         # 3. Radon CC
+ 101 |         notify(10, "Анализ сложности (Radon)...")
+ 102 |         try:
+ 103 |             for idx, chunk in enumerate(chunks):
+ 104 |                 # Progress from 10% to 30%
+ 105 |                 pct = 10 + int(20 * (idx / len(chunks)))
+ 106 |                 notify(pct, f"Radon CC ({idx + 1}/{len(chunks)})...")
+ 107 | 
+ 108 |                 cmd = [self.python_exe, "-m", "radon", "cc", "-j", "-a"] + chunk
+ 109 |                 try:
+ 110 |                     out = subprocess.check_output(cmd, cwd=self.root, encoding='utf-8', errors='replace')
+ 111 |                     data, _ = json.JSONDecoder().raw_decode(out)
+ 112 | 
+ 113 |                     for filename, metrics in data.items():
+ 114 |                         key = self._resolve_and_normalize(filename)
+ 115 |                         if key in results_map:
+ 116 |                             if not metrics:
+ 117 |                                 results_map[key].complexity = 1.0
+ 118 |                             else:
+ 119 |                                 total_cc = sum(m['complexity'] for m in metrics)
+ 120 |                                 avg_cc = total_cc / len(metrics)
+ 121 |                                 results_map[key].complexity = round(avg_cc, 1)
+ 122 |                 except Exception as e:
+ 123 |                     print(f"Radon CC chunk error: {e}")
+ 124 |         except Exception as e:
+ 125 |             print(f"Radon CC fatal: {e}")
+ 126 | 
+ 127 |         # 4. Radon MI
+ 128 |         notify(30, "Индекс поддерживаемости (Radon)...")
+ 129 |         try:
+ 130 |             for idx, chunk in enumerate(chunks):
+ 131 |                 # Progress from 30% to 45%
+ 132 |                 pct = 30 + int(15 * (idx / len(chunks)))
+ 133 |                 notify(pct, f"Radon MI ({idx + 1}/{len(chunks)})...")
+ 134 | 
+ 135 |                 cmd = [self.python_exe, "-m", "radon", "mi", "-j"] + chunk
+ 136 |                 try:
+ 137 |                     out = subprocess.check_output(cmd, cwd=self.root, encoding='utf-8', errors='replace')
+ 138 |                     data, _ = json.JSONDecoder().raw_decode(out)
+ 139 | 
+ 140 |                     for filename, metric_data in data.items():
+ 141 |                         key = self._resolve_and_normalize(filename)
+ 142 |                         if key in results_map:
+ 143 |                             results_map[key].maintainability = round(metric_data.get('mi', 0.0), 1)
+ 144 |                 except Exception as e:
+ 145 |                     print(f"Radon MI chunk error: {e}")
+ 146 |         except Exception as e:
+ 147 |             print(f"Radon MI fatal: {e}")
+ 148 | 
+ 149 |         # 5. Pylint
+ 150 |         notify(45, "Проверка качества (Pylint)...")
+ 151 |         try:
+ 152 |             for idx, chunk in enumerate(chunks):
+ 153 |                 # Progress from 45% to 80%
+ 154 |                 pct = 45 + int(35 * (idx / len(chunks)))
+ 155 |                 notify(pct, f"Pylint: пакет {idx + 1}/{len(chunks)}...")
+ 156 | 
+ 157 |                 cmd = [self.python_exe, "-m", "pylint", "--output-format=json", "--exit-zero"] + chunk
+ 158 | 
+ 159 |                 # Using subprocess.run is safer than check_output for pylint as it returns non-zero often
+ 160 |                 proc = subprocess.run(
+ 161 |                     cmd, capture_output=True, text=True, encoding='utf-8', errors='replace'
+ 162 |                 )
+ 163 | 
+ 164 |                 if proc.stdout.strip() and (proc.stdout.startswith('[') or proc.stdout.startswith('{')):
+ 165 |                     try:
+ 166 |                         issues = json.loads(proc.stdout)
+ 167 |                         if isinstance(issues, list):
+ 168 |                             for item in issues:
+ 169 |                                 path = item.get('path', '')
+ 170 |                                 if not path: continue
+ 171 | 
+ 172 |                                 key = self._normalize_key(os.path.abspath(path) if not os.path.isabs(path) else path)
+ 173 | 
+ 174 |                                 if key in results_map:
+ 175 |                                     msg_type = item.get('type', 'convention')
+ 176 |                                     msg = f"{item.get('message-id')}: {item.get('message')}"
+ 177 |                                     line = item.get('line', 0)
+ 178 | 
+ 179 |                                     severity = 'info'
+ 180 |                                     penalty = 0.1
+ 181 |                                     if msg_type in ['error', 'fatal']:
+ 182 |                                         severity = 'error'
+ 183 |                                         penalty = 2.0
+ 184 |                                     elif msg_type == 'warning':
+ 185 |                                         severity = 'warning'
+ 186 |                                         penalty = 0.5
+ 187 |                                     elif msg_type == 'refactor':
+ 188 |                                         penalty = 0.25
+ 189 | 
+ 190 |                                     results_map[key].issues.append(Issue('pylint', msg, line, severity))
+ 191 |                                     results_map[key].pylint_score = max(0.0, results_map[key].pylint_score - penalty)
+ 192 |                     except json.JSONDecodeError:
+ 193 |                         pass
+ 194 |         except Exception as e:
+ 195 |             print(f"Pylint error: {e}")
+ 196 | 
+ 197 |         # 6. Vulture (Dead code)
+ 198 |         notify(80, "Поиск мертвого кода (Vulture)...")
+ 199 |         try:
+ 200 |             # Vulture runs faster on all files at once usually
+ 201 |             cmd = [self.python_exe, "-m", "vulture"] + python_files_abs
+ 202 | 
+ 203 |             # Simple heuristic guard if too many files
+ 204 |             if len(python_files_abs) < 500:
+ 205 |                 proc = subprocess.run(
+ 206 |                     cmd, capture_output=True, text=True, encoding='utf-8', errors='replace'
+ 207 |                 )
+ 208 |                 for line in proc.stdout.splitlines():
+ 209 |                     parts = line.split(':', 2)
+ 210 |                     if len(parts) >= 3:
+ 211 |                         filename = parts[0].strip()
+ 212 |                         lineno = parts[1].strip()
+ 213 |                         msg = parts[2].strip()
+ 214 | 
+ 215 |                         key = self._normalize_key(os.path.abspath(filename))
+ 216 |                         if key in results_map:
+ 217 |                             results_map[key].issues.append(Issue('vulture', msg, int(lineno) if lineno.isdigit() else 0, 'info'))
+ 218 |             else:
+ 219 |                 notify(85, "Skipping Vulture (too many files)...")
+ 220 |         except Exception as e:
+ 221 |             print(f"Vulture error: {e}")
+ 222 | 
+ 223 |         # 7. Bandit
+ 224 |         notify(90, "Аудит безопасности (Bandit)...")
+ 225 |         try:
+ 226 |             cmd = [self.python_exe, "-m", "bandit", "-f", "json"] + python_files_abs
+ 227 |             # Bandit is usually fast enough, but if it hangs, we can add chunking later
+ 228 |             if len(python_files_abs) < 1000:
+ 229 |                 proc = subprocess.run(
+ 230 |                     cmd, capture_output=True, text=True, encoding='utf-8', errors='replace'
+ 231 |                 )
+ 232 |                 output = proc.stdout.strip()
+ 233 |                 if output.startswith("{"):
+ 234 |                     try:
+ 235 |                         data = json.loads(output)
+ 236 |                         for item in data.get('results', []):
+ 237 |                             filename = item.get('filename')
+ 238 |                             if not filename: continue
+ 239 | 
+ 240 |                             key = self._normalize_key(os.path.abspath(filename))
+ 241 |                             if key in results_map:
+ 242 |                                 severity = item.get('issue_severity', 'LOW').lower()
+ 243 |                                 msg = item.get('issue_text', 'Security Issue')
+ 244 |                                 line = item.get('line_number', 0)
+ 245 | 
+ 246 |                                 sev_map = 'info'
+ 247 |                                 if severity == 'high':
+ 248 |                                     sev_map = 'error'
+ 249 |                                 elif severity == 'medium':
+ 250 |                                     sev_map = 'warning'
+ 251 | 
+ 252 |                                 results_map[key].issues.append(Issue('bandit', f"[{severity.upper()}] {msg}", line, sev_map))
+ 253 | 
+ 254 |                                 if severity in ['high', 'medium']:
+ 255 |                                     results_map[key].security_issues += 1
+ 256 |                     except json.JSONDecodeError:
+ 257 |                         pass
+ 258 |             else:
+ 259 |                 notify(95, "Skipping Bandit (too many files)...")
+ 260 |         except Exception as e:
+ 261 |             print(f"Bandit error: {e}")
+ 262 | 
+ 263 |         notify(100, "Готово!")
+ 264 | 
+ 265 |         # Round final scores
+ 266 |         for m in final_results:
+ 267 |             m.pylint_score = round(m.pylint_score, 2)
+ 268 | 
+ 269 |         return final_results
+</file>
+
+<file path="gui/__init__.py">
+
+</file>
+
+<file path="gui/app.py">
+   1 | import tkinter as tk
+   2 | from tkinter import filedialog, messagebox, ttk, scrolledtext
+   3 | import threading
+   4 | import os
+   5 | import json
+   6 | 
+   7 | from PIG_T3.config import ConfigManager
+   8 | from PIG_T3.core.analyzer import ProjectAnalyzer
+   9 | from PIG_T3.core.patcher import apply_llm_changes, clean_json_text
+  10 | from PIG_T3.utils.clipboard import copy_file_to_clipboard_windows
+  11 | from PIG_T3.core.ollama_client import OllamaClient, get_installed_models
+  12 | from PIG_T3.gui.tabs.quality_tab import QualityTab
+  13 | from PIG_T3.core.ollama_client import OllamaClient, get_installed_models
+  14 | 
+  15 | 
+  16 | class DarkApp(tk.Tk):
+  17 |     def __init__(self):
+  18 |         super().__init__()
+  19 |         self.title("AI Context Generator & Patcher (JSON Edition)")
+  20 |         self.geometry("900x950")  # Increased size for TreeView
+  21 |         self.configure(bg="#2b2b2b")
+  22 |         self.config_manager = ConfigManager()
+  23 |         self.settings = self.config_manager.load()
+  24 |         self.analyzer = ProjectAnalyzer()
+  25 |         self.setup_styles()
+  26 |         self.setup_global_bindings()
+  27 |         self.create_widgets()
+  28 |         self._debounce_timer = None
+  29 |         self._last_applied_content = None
+  30 | 
+  31 |     def setup_styles(self):
+  32 |         style = ttk.Style(self)
+  33 |         style.theme_use('clam')
+  34 |         bg_color = "#2b2b2b"
+  35 |         fg_color = "#ffffff"
+  36 |         entry_bg = "#3c3f41"
+  37 |         btn_bg = "#365880"
+  38 |         btn_active = "#4b7aa6"
+  39 |         style.configure("TLabel", background=bg_color, foreground=fg_color, font=("Segoe UI", 10))
+  40 |         style.configure("TButton", background=btn_bg, foreground=fg_color, borderwidth=0, font=("Segoe UI", 10, "bold"))
+  41 |         style.map("TButton", background=[('active', btn_active)])
+  42 |         style.configure("TCheckbutton", background=bg_color, foreground=fg_color, font=("Segoe UI", 10))
+  43 |         style.map("TCheckbutton", background=[('active', bg_color)], indicatorcolor=[('selected', '#4CAF50')])
+  44 |         style.configure("TEntry", fieldbackground=entry_bg, foreground=fg_color, insertcolor="white", borderwidth=0)
+  45 |         style.configure("Horizontal.TProgressbar", background="#4CAF50", troughcolor="#3c3f41", bordercolor="#2b2b2b",
+  46 |                         lightcolor="#4CAF50", darkcolor="#4CAF50")
+  47 |         style.configure("TNotebook", background="#2b2b2b", borderwidth=0)
+  48 |         style.configure("TNotebook.Tab", background="#3c3f41", foreground="#a9b7c6", padding=[15, 5],
+  49 |                         font=("Segoe UI", 10))
+  50 |         style.map("TNotebook.Tab", background=[("selected", "#365880")], foreground=[("selected", "white")])
+  51 | 
+  52 |     def setup_global_bindings(self):
+  53 |         def select_all(event):
+  54 |             widget = event.widget
+  55 |             if isinstance(widget, tk.Entry):
+  56 |                 widget.select_range(0, 'end')
+  57 |                 widget.icursor('end')
+  58 |             elif isinstance(widget, tk.Text) or isinstance(widget, scrolledtext.ScrolledText):
+  59 |                 widget.tag_add("sel", "1.0", "end")
+  60 |             return "break"
+  61 | 
+  62 |         self.bind_class("Entry", "<Control-a>", select_all)
+  63 |         self.bind_class("Text", "<Control-a>", select_all)
+  64 |         self.bind_class("Entry", "<Control-f>", select_all)
+  65 | 
+  66 |     def create_widgets(self):
+  67 |         self.path_var = tk.StringVar(value=self.settings["root_folder"])
+  68 |         self.notebook = ttk.Notebook(self)
+  69 |         self.notebook.pack(fill=tk.BOTH, expand=True)
+  70 |         self.tab_gen = tk.Frame(self.notebook, bg="#2b2b2b")
+  71 |         self.notebook.add(self.tab_gen, text="🏠 Генератор")
+  72 |         self.tab_help = tk.Frame(self.notebook, bg="#2b2b2b")
+  73 |         self.notebook.add(self.tab_help, text="🎓 Инфо / JSON Specs")
+  74 |         self.tab_editor = tk.Frame(self.notebook, bg="#2b2b2b")
+  75 |         self.notebook.add(self.tab_editor, text="✏️ Редактор (JSON Patcher)")
+  76 |         
+  77 |         self.tab_quality = QualityTab(self.notebook, self.path_var)
+  78 |         self.notebook.add(self.tab_quality, text="📊 Анализ кода")
+  79 | 
+  80 |         self.create_generator_tab(self.tab_gen)
+  81 |         self.create_help_tab(self.tab_help)
+  82 |         self.create_editor_tab(self.tab_editor)
+  83 | 
+  84 |     def create_generator_tab(self, parent):
+  85 |         main_frame = tk.Frame(parent, bg="#2b2b2b", padx=20, pady=20)
+  86 |         main_frame.pack(fill=tk.BOTH, expand=True)
+  87 | 
+  88 |         # Row 1: Path
+  89 |         tk.Label(main_frame, text="Папка проекта:", bg="#2b2b2b", fg="#a9b7c6", font=("Segoe UI", 10, "bold")).pack(anchor="w")
+  90 |         path_frame = tk.Frame(main_frame, bg="#2b2b2b")
+  91 |         path_frame.pack(fill=tk.X, pady=(5, 10))
+  92 |         path_entry = tk.Entry(path_frame, textvariable=self.path_var, bg="#3c3f41", fg="white", insertbackground="white", relief="flat")
+  93 |         path_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=4, padx=(0, 10))
+  94 |         tk.Button(path_frame, text="Обзор...", command=self.browse_folder, bg="#4a4a4a", fg="white", relief="flat", padx=10).pack(side=tk.RIGHT)
+  95 | 
+  96 |         # Row 2: Extensions & Output
+  97 |         grid_frame = tk.Frame(main_frame, bg="#2b2b2b")
+  98 |         grid_frame.pack(fill=tk.X, pady=5)
+  99 | 
+ 100 |         tk.Label(grid_frame, text="Расширения:", bg="#2b2b2b", fg="#a9b7c6", font=("Segoe UI", 9)).grid(row=0, column=0, sticky="w")
+ 101 |         self.ext_var = tk.StringVar(value=self.settings["extensions"])
+ 102 |         tk.Entry(grid_frame, textvariable=self.ext_var, bg="#3c3f41", fg="white", relief="flat").grid(row=1, column=0, sticky="ew", padx=(0, 10), ipady=3)
+ 103 | 
+ 104 |         tk.Label(grid_frame, text="Имя отчета:", bg="#2b2b2b", fg="#a9b7c6", font=("Segoe UI", 9)).grid(row=0, column=1, sticky="w")
+ 105 |         self.out_var = tk.StringVar(value=self.settings["output_name"])
+ 106 |         tk.Entry(grid_frame, textvariable=self.out_var, bg="#3c3f41", fg="white", relief="flat").grid(row=1, column=1, sticky="ew", ipady=3)
+ 107 |         grid_frame.columnconfigure(0, weight=1)
+ 108 |         grid_frame.columnconfigure(1, weight=1)
+ 109 | 
+ 110 |         # Row 3: Ignore
+ 111 |         tk.Label(main_frame, text="Исключить (Ignore):", bg="#2b2b2b", fg="#a9b7c6", font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=(10, 0))
+ 112 |         self.ignore_var = tk.StringVar(value=self.settings["ignore_list"])
+ 113 |         tk.Entry(main_frame, textvariable=self.ignore_var, bg="#3c3f41", fg="white", relief="flat").pack(fill=tk.X, pady=(5, 10), ipady=4)
+ 114 | 
+ 115 |         # Options
+ 116 |         options_frame = tk.LabelFrame(main_frame, text="Опции генерации", bg="#2b2b2b", fg="#a9b7c6", font=("Segoe UI", 9), relief="flat", labelanchor="n")
+ 117 |         options_frame.pack(fill=tk.X, pady=(0, 15), ipady=5)
+ 118 | 
+ 119 |         self.use_md_var = tk.BooleanVar(value=self.settings.get("use_markdown", False))
+ 120 |         ttk.Checkbutton(options_frame, text="Markdown формат (.md)", variable=self.use_md_var, style="TCheckbutton", command=self.toggle_format_hint).pack(anchor="w", padx=10)
+ 121 | 
+ 122 |         self.add_edit_prompt_var = tk.BooleanVar(value=self.settings.get("add_edit_prompt", False))
+ 123 |         ttk.Checkbutton(options_frame, text="Добавить инструкцию для AI (JSON Format)", variable=self.add_edit_prompt_var, style="TCheckbutton").pack(anchor="w", padx=10)
+ 124 | 
+ 125 |         self.line_numbers_var = tk.BooleanVar(value=self.settings.get("line_numbers", False))
+ 126 |         ttk.Checkbutton(options_frame, text="Нумеровать строки (для точного редактирования)", variable=self.line_numbers_var, style="TCheckbutton").pack(anchor="w", padx=10)
+ 127 | 
+ 128 |         self.auto_copy_var = tk.BooleanVar(value=self.settings.get("auto_copy_file", False))
+ 129 |         ttk.Checkbutton(options_frame, text="Авто-копировать ФАЙЛ в буфер (для вставки в чат)", variable=self.auto_copy_var, style="TCheckbutton").pack(anchor="w", padx=10)
+ 130 | 
+ 131 |         # Row 4: Project Tree Preview
+ 132 |         tree_container = tk.LabelFrame(main_frame, text="Структура проекта (выберите файлы для отчёта)", bg="#2b2b2b", fg="#a9b7c6", font=("Segoe UI", 9))
+ 133 |         tree_container.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+ 134 | 
+ 135 |         # Treeview
+ 136 |         self.tree_scroll = ttk.Scrollbar(tree_container)
+ 137 |         self.tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+ 138 |         
+ 139 |         self.tree = ttk.Treeview(tree_container, selectmode="none", yscrollcommand=self.tree_scroll.set)
+ 140 |         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+ 141 |         self.tree_scroll.config(command=self.tree.yview)
+ 142 |         
+ 143 |         # Configure Tree
+ 144 |         self.tree.heading("#0", text="Проект", anchor="w")
+ 145 |         self.tree.column("#0", width=400)
+ 146 |         self.tree.bind("<Button-1>", self.on_tree_click)
+ 147 |         
+ 148 |         # State storage for tree items: item_id -> True/False
+ 149 |         self.tree_checked_state = {}
+ 150 |         # Mapping: item_id -> full_path
+ 151 |         self.tree_path_map = {}
+ 152 | 
+ 153 |         # Run
+ 154 |         self.btn_run = tk.Button(main_frame, text="ГЕНЕРИРОВАТЬ КОНТЕКСТ", command=self.start_processing, bg="#365880", fg="white", font=("Segoe UI", 11, "bold",), relief="flat", pady=8, cursor="hand2")
+ 155 |         self.btn_run.pack(fill=tk.X, pady=(0, 10))
+ 156 | 
+ 157 |         self.progress = ttk.Progressbar(main_frame, orient="horizontal", length=100, mode="determinate", style="Horizontal.TProgressbar")
+ 158 |         self.status_var = tk.StringVar(value="Готов к работе")
+ 159 |         tk.Label(main_frame, textvariable=self.status_var, bg="#2b2b2b", fg="#808080", font=("Segoe UI", 9)).pack(side=tk.BOTTOM, pady=5)
+ 160 | 
+ 161 |         self.toggle_format_hint()
+ 162 |         # Bindings for auto-update
+ 163 |         self.path_var.trace_add("write", self.on_param_change)
+ 164 |         self.ext_var.trace_add("write", self.on_param_change)
+ 165 |         self.ignore_var.trace_add("write", self.on_param_change)
+ 166 |         # Force initial tree population
+ 167 |         self.refresh_preview_tree()
+ 168 | 
+ 169 |     def create_help_tab(self, parent):
+ 170 |         # Используем PanedWindow для разделения меню и контента
+ 171 |         paned = tk.PanedWindow(parent, orient=tk.HORIZONTAL, sashwidth=4, bg="#2b2b2b")
+ 172 |         paned.pack(fill=tk.BOTH, expand=True)
+ 173 | 
+ 174 |         # --- Левая панель (Меню) ---
+ 175 |         nav_frame = tk.Frame(paned, bg="#2b2b2b", width=220)
+ 176 |         nav_frame.pack_propagate(False)  # Фиксируем ширину
+ 177 |         paned.add(nav_frame)
+ 178 | 
+ 179 |         tk.Label(nav_frame, text="СПРАВОЧНИК", bg="#2b2b2b", fg="#61afef", font=("Segoe UI", 12, "bold"), pady=10).pack(fill=tk.X)
+ 180 | 
+ 181 |         # Стиль кнопок меню
+ 182 |         def create_nav_btn(text, cmd):
+ 183 |             btn = tk.Button(nav_frame, text=text, command=cmd, bg="#3c3f41", fg="#a9b7c6",
+ 184 |                             activebackground="#4b7aa6", activeforeground="white",
+ 185 |                             relief="flat", font=("Segoe UI", 10), anchor="w", padx=10)
+ 186 |             btn.pack(fill=tk.X, pady=2, padx=5)
+ 187 |             return btn
+ 188 | 
+ 189 |         create_nav_btn("🔰 БАЗОВАЯ ИНФО", lambda: self.show_help_content("basic"))
+ 190 | 
+ 191 |         tk.Label(nav_frame, text="ПРОДВИНУТОЕ", bg="#2b2b2b", fg="#5c6370", font=("Segoe UI", 9, "bold"), pady=5).pack(fill=tk.X, pady=(10, 0))
+ 192 |         
+ 193 |         create_nav_btn("🔧 Механика вкладок", lambda: self.show_help_content("mechanics"))
+ 194 |         create_nav_btn("🧬 JSON Структура", lambda: self.show_help_content("json"))
+ 195 |         create_nav_btn("📊 Расшифровка метрик", lambda: self.show_help_content("metrics"))
+ 196 |         create_nav_btn("🤖 Ollama и Авто-фикс", lambda: self.show_help_content("ollama"))
+ 197 | 
+ 198 |         # --- Правая панель (Контент) ---
+ 199 |         content_frame = tk.Frame(paned, bg="#2b2b2b")
+ 200 |         paned.add(content_frame)
+ 201 | 
+ 202 |         self.help_text = scrolledtext.ScrolledText(content_frame, wrap=tk.WORD, bg="#282c34", fg="#abb2bf",
+ 203 |                                                    font=("Consolas", 11), relief="flat", padx=20, pady=20)
+ 204 |         self.help_text.pack(fill=tk.BOTH, expand=True)
+ 205 | 
+ 206 |         # Настройка тегов для красоты
+ 207 |         self.help_text.tag_config("h1", font=("Segoe UI", 18, "bold"), foreground="#61afef", spacing3=15)
+ 208 |         self.help_text.tag_config("h2", font=("Segoe UI", 14, "bold"), foreground="#98c379", spacing1=10, spacing3=5)
+ 209 |         self.help_text.tag_config("code", font=("Consolas", 10), background="#3e4451", foreground="#56b6c2")
+ 210 |         self.help_text.tag_config("warn", foreground="#e5c07b")
+ 211 |         self.help_text.tag_config("crit", foreground="#e06c75", font=("Segoe UI", 10, "bold"))
+ 212 |         self.help_text.tag_config("success", foreground="#98c379")
+ 213 |         self.help_text.tag_config("bold", font=("Segoe UI", 11, "bold"))
+ 214 | 
+ 215 |         # Загружаем базовый контент при старте
+ 216 |         self.show_help_content("basic")
+ 217 | 
+ 218 |     def show_help_content(self, section):
+ 219 |         self.help_text.config(state='normal')
+ 220 |         self.help_text.delete("1.0", tk.END)
+ 221 | 
+ 222 |         text_map = {
+ 223 |             "basic": self._get_text_basic,
+ 224 |             "mechanics": self._get_text_mechanics,
+ 225 |             "json": self._get_text_json,
+ 226 |             "metrics": self._get_text_metrics,
+ 227 |             "ollama": self._get_text_ollama
+ 228 |         }
+ 229 | 
+ 230 |         content_func = text_map.get(section, self._get_text_basic)
+ 231 |         content_func()
+ 232 | 
+ 233 |         self.help_text.config(state='disabled')
+ 234 | 
+ 235 |     # --- TEXT GENERATORS ---
+ 236 | 
+ 237 |     def _get_text_basic(self):
+ 238 |         self._insert_header("🔰 БАЗОВАЯ ИНСТРУКЦИЯ")
+ 239 |         
+ 240 |         self.help_text.insert(tk.END, "1. Вкладка 'Генератор'\n", "h2")
+ 241 |         self.help_text.insert(tk.END, "Эта вкладка создает 'контекст' — единый файл со всем кодом вашего проекта.\n\n")
+ 242 |         self.help_text.insert(tk.END, "• Выберите папку проекта.\n• Нажмите 'ГЕНЕРИРОВАТЬ'.\n• Полученный файл (.txt или .md) отправьте в чат с AI (ChatGPT, Claude, DeepSeek).\n")
+ 243 |         self.help_text.insert(tk.END, "💡 Совет: Включите 'Нумеровать строки' и 'Инструкцию для AI' для лучших результатов редактирования.\n")
+ 244 | 
+ 245 |         self.help_text.insert(tk.END, "\n2. Вкладка 'Редактор'\n", "h2")
+ 246 |         self.help_text.insert(tk.END, "Сюда вставляется ответ от нейросети в формате JSON для автоматического применения изменений.\n\n")
+ 247 |         self.help_text.insert(tk.END, "• Скопируйте JSON-код из ответа AI.\n• Вставьте в поле редактора.\n• Нажмите 'Проверить' -> 'Применить'.\n")
+ 248 | 
+ 249 |         self.help_text.insert(tk.END, "\n3. Вкладка 'Анализ кода'\n", "h2")
+ 250 |         self.help_text.insert(tk.END, "Локальный аудит качества без отправки кода в сеть.\n\n")
+ 251 |         self.help_text.insert(tk.END, "• Нажмите 'Запустить анализ'.\n• Смотрите таблицу метрик и детали найденных проблем.")
+ 252 | 
+ 253 |     def _get_text_mechanics(self):
+ 254 |         self._insert_header("🔧 КАК ЭТО РАБОТАЕТ (ПОД КАПОТОМ)")
+ 255 |         
+ 256 |         self.help_text.insert(tk.END, "Генератор контекста (Analyzer)\n", "h2")
+ 257 |         self.help_text.insert(tk.END, "Скрипт обходит дерево файлов, игнорируя папки из списка 'Ignore'.\n")
+ 258 |         self.help_text.insert(tk.END, "Он собирает весь код в один текстовый файл, добавляя XML-теги <file path='...'>.\n")
+ 259 |         self.help_text.insert(tk.END, "Это позволяет AI четко понимать, где начинается и заканчивается каждый файл.")
+ 260 | 
+ 261 |         self.help_text.insert(tk.END, "\n\nПатчер (Patcher)\n", "h2")
+ 262 |         self.help_text.insert(tk.END, "1. Разбирает входящий JSON.\n2. Для 'edit' операций сортирует изменения снизу вверх (чтобы не сбить номера строк).\n3. Безопасно перезаписывает файлы.\n")
+ 263 | 
+ 264 |         self.help_text.insert(tk.END, "\nАнализатор качества (Scanner)\n", "h2")
+ 265 |         self.help_text.insert(tk.END, "Запускает 4 утилиты как подпроцессы:\n")
+ 266 |         self.help_text.insert(tk.END, "• Radon CC (Сложность)\n• Radon MI (Поддерживаемость)\n• Pylint (Стиль/Ошибки)\n• Bandit (Безопасность)\n\n")
+ 267 |         self.help_text.insert(tk.END, "Результаты парсятся из JSON-вывода этих утилит и сводятся в единую таблицу.")
+ 268 | 
+ 269 |     def _get_text_json(self):
+ 270 |         self._insert_header("🧬 СТРУКТУРА JSON ДЛЯ РЕДАКТИРОВАНИЯ")
+ 271 |         self.help_text.insert(tk.END, "Чтобы изменить код, AI должен вернуть ответ строго в таком формате:\n\n")
+ 272 |         
+ 273 |         json_ex = """
+ 274 | [
+ 275 |   {
+ 276 |     "action": "create",
+ 277 |     "path": "utils/helper.py",
+ 278 |     "content": "def help():\n    pass"
+ 279 |   },
+ 280 |   {
+ 281 |     "action": "delete",
+ 282 |     "path": "old_file.py"
+ 283 |   },
+ 284 |   {
+ 285 |     "action": "edit",
+ 286 |     "path": "main.py",
+ 287 |     "operations": [
+ 288 |        {
+ 289 |          "type": "replace_lines",
+ 290 |          "start": 10, "end": 12,
+ 291 |          "content": "    new_code()\n    fixed_line()"
+ 292 |        },
+ 293 |        {
+ 294 |          "type": "insert_after_line",
+ 295 |          "line": 15,
+ 296 |          "content": "    print('Debug info')"
+ 297 |        },
+ 298 |        {
+ 299 |          "type": "replace_text",
+ 300 |          "find": "old_string",
+ 301 |          "replace": "new_string"
+ 302 |        }
+ 303 |     ]
+ 304 |   }
+ 305 | ]
+ 306 | """
+ 307 |         self.help_text.insert(tk.END, json_ex, "code")
+ 308 |         self.help_text.insert(tk.END, "\n\n⚠️ ВАЖНО: При replace_lines не включайте контекст (соседние неизменные строки), иначе они продублируются. Для вставки нового блока лучше использовать insert_after_line.", "crit")
+ 309 | 
+ 310 |     def _get_text_metrics(self):
+ 311 |         self._insert_header("📊 ПОДРОБНАЯ РАСШИФРОВКА МЕТРИК")
+ 312 |         
+ 313 |         self.help_text.insert(tk.END, "1. Cyclomatic Complexity (CC) — Цикломатическая сложность\n", "h2")
+ 314 |         self.help_text.insert(tk.END, "Мера запутанности логики (количество развилок if/for/while).\n")
+ 315 |         self.help_text.insert(tk.END, "• 1-10: ", "bold"); self.help_text.insert(tk.END, "Простой код (🟢)\n", "success")
+ 316 |         self.help_text.insert(tk.END, "• 11-20: ", "bold"); self.help_text.insert(tk.END, "Умеренная сложность (⚠️)\n", "warn")
+ 317 |         self.help_text.insert(tk.END, "• 21+: ", "bold"); self.help_text.insert(tk.END, "Сложный код, риск багов (🔴)\n", "crit")
+ 318 | 
+ 319 |         self.help_text.insert(tk.END, "\n2. Maintainability Index (MI) — Индекс поддерживаемости\n", "h2")
+ 320 |         self.help_text.insert(tk.END, "Оценка (0-100), насколько легко читать и менять код.\n")
+ 321 |         self.help_text.insert(tk.END, "• > 20: ", "bold"); self.help_text.insert(tk.END, "Высокая (🟢)\n", "success")
+ 322 |         self.help_text.insert(tk.END, "• 10-20: ", "bold"); self.help_text.insert(tk.END, "Средняя (⚠️)\n", "warn")
+ 323 |         self.help_text.insert(tk.END, "• < 10: ", "bold"); self.help_text.insert(tk.END, "Низкая, спагетти-код (🔴)\n", "crit")
+ 324 | 
+ 325 |         self.help_text.insert(tk.END, "\n3. Linter Score (Pylint) — Оценка качества\n", "h2")
+ 326 |         self.help_text.insert(tk.END, "Строгая оценка 'учителя' по 10-балльной шкале (PEP8, ошибки, стиль).\n")
+ 327 |         self.help_text.insert(tk.END, "• > 8.0: ", "bold"); self.help_text.insert(tk.END, "Отлично (🟢)\n", "success")
+ 328 |         self.help_text.insert(tk.END, "• 5.0-8.0: ", "bold"); self.help_text.insert(tk.END, "Есть замечания (⚠️)\n", "warn")
+ 329 |         self.help_text.insert(tk.END, "• < 5.0: ", "bold"); self.help_text.insert(tk.END, "Плохо (🔴)\n", "crit")
+ 330 | 
+ 331 |         self.help_text.insert(tk.END, "\n4. Security Issues (Bandit) — Безопасность\n", "h2")
+ 332 |         self.help_text.insert(tk.END, "Поиск уязвимостей: зашитые пароли, injection, unsafe functions.\n")
+ 333 |         self.help_text.insert(tk.END, "• 0 проблем: ", "bold"); self.help_text.insert(tk.END, "Чисто (🟢)\n", "success")
+ 334 |         self.help_text.insert(tk.END, "• > 0: ", "bold"); self.help_text.insert(tk.END, "Найдены уязвимости! (🔴)\n", "crit")
+ 335 | 
+ 336 |     def _get_text_ollama(self):
+ 337 |         self._insert_header("🤖 OLLAMA И AUTO-FIX")
+ 338 |         self.help_text.insert(tk.END, "Приложение умеет использовать локальные нейросети через Ollama.\n\n", "bold")
+ 339 |         self.help_text.insert(tk.END, "Зачем это нужно?\n", "h2")
+ 340 |         self.help_text.insert(tk.END, "Если вы вставили JSON с ошибкой (например, лишняя запятая), приложение может попросить локальную модель исправить синтаксис, не отправляя данные в интернет.\n\n")
+ 341 |         self.help_text.insert(tk.END, "Как настроить:\n", "h2")
+ 342 |         self.help_text.insert(tk.END, "1. Установите Ollama (ollama.com).\n")
+ 343 |         self.help_text.insert(tk.END, "2. Скачайте модель: `ollama pull qwen2.5-coder` (или любую другую).\n")
+ 344 |         self.help_text.insert(tk.END, "3. Перезапустите приложение — модель появится в списке во вкладке 'Редактор'.")
+ 345 | 
+ 346 |     def _insert_header(self, text):
+ 347 |         self.help_text.insert(tk.END, text + "\n", "h1")
+ 348 |         self.help_text.insert(tk.END, "=" * 60 + "\n\n", "dim")
+ 349 | 
+ 350 |     def create_editor_tab(self, parent):
+ 351 |         main_frame = tk.Frame(parent, bg="#2b2b2b", padx=20, pady=20)
+ 352 |         main_frame.pack(fill=tk.BOTH, expand=True)
+ 353 | 
+ 354 |         # Папка
+ 355 |         top_frame = tk.Frame(main_frame, bg="#2b2b2b")
+ 356 |         top_frame.pack(fill=tk.X, pady=(0, 10))
+ 357 |         tk.Label(top_frame, text="Целевая папка:", bg="#2b2b2b", fg="#a9b7c6").pack(side=tk.LEFT)
+ 358 |         tk.Entry(top_frame, textvariable=self.path_var, bg="#3c3f41", fg="gray", relief="flat", width=40).pack(side=tk.LEFT, padx=10)
+ 359 | 
+ 360 |         tk.Label(main_frame, text="Вставьте JSON ответ от AI (можно с ```json):", bg="#2b2b2b", fg="#a9b7c6", font=("Segoe UI", 10, "bold")).pack(anchor="w")
+ 361 | 
+ 362 |         self.editor_text = scrolledtext.ScrolledText(main_frame, wrap=tk.WORD, height=20, bg="#3c3f41", fg="#a9b7c6",
+ 363 |                                                      font=("Consolas", 10), insertbackground="white", relief="flat")
+ 364 |         self.editor_text.pack(fill=tk.BOTH, expand=True, pady=(5, 10))
+ 365 | 
+ 366 |         # --- Настройки Ollama (Collapsible or just frame) ---
+ 367 |         self.create_ollama_settings(main_frame)
+ 368 | 
+ 369 |         # Buttons
+ 370 |         btn_frame = tk.Frame(main_frame, bg="#2b2b2b")
+ 371 |         btn_frame.pack(fill=tk.X)
+ 372 | 
+ 373 |         tk.Button(btn_frame, text="📋 Вставить", command=self.paste_from_clipboard,
+ 374 |                   bg="#4a4a4a", fg="white", relief="flat", padx=15, pady=5).pack(side=tk.LEFT, padx=(0, 10))
+ 375 | 
+ 376 |         tk.Button(btn_frame, text="🔍 Проверить / Форматировать JSON", command=self.validate_json_ui,
+ 377 |                   bg="#4a4a4a", fg="white", relief="flat", padx=15, pady=5).pack(side=tk.LEFT, padx=(0, 10))
+ 378 | 
+ 379 |         self.btn_apply = tk.Button(btn_frame, text="ПРИМЕНИТЬ ИЗМЕНЕНИЯ", command=self.apply_changes,
+ 380 |                                    bg="#365880", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", pady=5)
+ 381 |         self.btn_apply.pack(side=tk.LEFT, fill=tk.X, expand=True)
+ 382 | 
+ 383 |         self.editor_status_var = tk.StringVar(value="")
+ 384 |         tk.Label(main_frame, textvariable=self.editor_status_var, bg="#2b2b2b", fg="#e5c07b", font=("Consolas", 9)).pack(side=tk.BOTTOM, pady=5)
+ 385 | 
+ 386 |     def create_ollama_settings(self, parent):
+ 387 |         frame = tk.LabelFrame(parent, text="🛠️ Ollama Auto-Fix (Локальная LLM)", bg="#2b2b2b", fg="#a9b7c6", font=("Segoe UI", 9), padx=10, pady=5)
+ 388 |         frame.pack(fill=tk.X, pady=(0, 10))
+ 389 | 
+ 390 |         # Model Selection
+ 391 |         row1 = tk.Frame(frame, bg="#2b2b2b")
+ 392 |         row1.pack(fill=tk.X, pady=2)
+ 393 |         tk.Label(row1, text="Модель:", bg="#2b2b2b", fg="#a9b7c6", width=10, anchor="w").pack(side=tk.LEFT)
+ 394 |         
+ 395 |         current_model = self.settings.get("ollama_model", "None")
+ 396 |         models = ["None"] + get_installed_models()
+ 397 |         
+ 398 |         self.ollama_model_var = tk.StringVar(value=current_model)
+ 399 |         self.combo_models = ttk.Combobox(row1, textvariable=self.ollama_model_var, values=models, state="readonly")
+ 400 |         self.combo_models.pack(side=tk.LEFT, fill=tk.X, expand=True)
+ 401 | 
+ 402 |         # Options
+ 403 |         row2 = tk.Frame(frame, bg="#2b2b2b")
+ 404 |         row2.pack(fill=tk.X, pady=5)
+ 405 |         
+ 406 |         def mk_entry(p, label, key, default):
+ 407 |             tk.Label(p, text=label, bg="#2b2b2b", fg="#a9b7c6", font=("Segoe UI", 8)).pack(side=tk.LEFT, padx=(5, 2))
+ 408 |             var = tk.StringVar(value=str(self.settings.get("ollama_options", {}).get(key, default)))
+ 409 |             e = tk.Entry(p, textvariable=var, bg="#3c3f41", fg="white", width=8, relief="flat", font=("Consolas", 9))
+ 410 |             e.pack(side=tk.LEFT)
+ 411 |             return var
+ 412 | 
+ 413 |         self.opt_ctx = mk_entry(row2, "Ctx:", "num_ctx", 24000)
+ 414 |         self.opt_pred = mk_entry(row2, "Predict:", "num_predict", 12000)
+ 415 |         self.opt_temp = mk_entry(row2, "Temp:", "temperature", 0.5)
+ 416 |         self.opt_topp = mk_entry(row2, "TopP:", "top_p", 0.95)
+ 417 |         self.opt_topk = mk_entry(row2, "TopK:", "top_k", 100)
+ 418 |     def paste_from_clipboard(self):
+ 419 |         try:
+ 420 |             content = self.clipboard_get()
+ 421 |             self.editor_text.delete("1.0", tk.END)
+ 422 |             self.editor_text.insert("1.0", content)
+ 423 |             self.editor_status_var.set("📋 Вставлено из буфера обмена")
+ 424 |         except Exception:
+ 425 |             self.editor_status_var.set("⚠️ Ошибка: буфер обмена пуст или не содержит текста")
+ 426 |     def validate_json_ui(self):
+ 427 |         """Пытается распарсить JSON, форматирует его красиво или показывает ошибку."""
+ 428 |         raw_text = self.editor_text.get("1.0", tk.END).strip()
+ 429 |         if not raw_text:
+ 430 |             self.editor_status_var.set("Пустое поле.")
+ 431 |             return False
+ 432 | 
+ 433 |         # Пытаемся вытащить JSON из markdown
+ 434 |         cleaned = clean_json_text(raw_text)
+ 435 | 
+ 436 |         try:
+ 437 |             data = json.loads(cleaned)
+ 438 |             if not isinstance(data, list):
+ 439 |                 raise ValueError("JSON должен быть списком (root array).")
+ 440 | 
+ 441 |             # Pretty print back to editor
+ 442 |             pretty_json = json.dumps(data, indent=2, ensure_ascii=False)
+ 443 |             self.editor_text.delete("1.0", tk.END)
+ 444 |             self.editor_text.insert("1.0", pretty_json)
+ 445 | 
+ 446 |             count = len(data)
+ 447 |             self.editor_status_var.set(f"✅ Валидный JSON. Найдено операций: {count}")
+ 448 |             return True
+ 449 |         except Exception as e:
+ 450 |             self.editor_status_var.set(f"❌ Ошибка JSON: {e}")
+ 451 |             
+ 452 |             # --- Auto Fix Logic ---
+ 453 |             model = self.ollama_model_var.get()
+ 454 |             if model and model != "None":
+ 455 |                 self.run_ollama_fix(raw_text, model)
+ 456 |                 return False
+ 457 |             # ----------------------
+ 458 | 
+ 459 |             messagebox.showerror("Ошибка валидации", f"Некорректный JSON:\n{e}")
+ 460 |             return False
+ 461 | 
+ 462 |     def apply_changes(self):
+ 463 |         # Сначала валидируем
+ 464 |         if not self.validate_json_ui():
+ 465 |             return
+ 466 | 
+ 467 |         llm_text = self.editor_text.get("1.0", tk.END).strip()
+ 468 | 
+ 469 |         # Защита от случайного повторного нажатия
+ 470 |         if self._last_applied_content and llm_text == self._last_applied_content:
+ 471 |             if not messagebox.askyesno("Подтверждение", "Эти изменения уже были применены.\nПовторить применение патча?"):
+ 472 |                 return
+ 473 | 
+ 474 |         self._last_applied_content = llm_text
+ 475 |         root_folder = self.path_var.get()
+ 476 | 
+ 477 |         if not os.path.exists(root_folder):
+ 478 |             messagebox.showerror("Ошибка", "Папка проекта не существует.")
+ 479 |             return
+ 480 | 
+ 481 |         self.btn_apply.config(state=tk.DISABLED, text="Применение...", bg="#555555")
+ 482 | 
+ 483 |         def _apply():
+ 484 |             try:
+ 485 |                 log = apply_llm_changes(llm_text, root_folder)
+ 486 |                 self.after(0, lambda: self._on_apply_complete(log))
+ 487 |             except Exception as e:
+ 488 |                 self.after(0, lambda: self._on_apply_error(str(e)))
+ 489 | 
+ 490 |         threading.Thread(target=_apply).start()
+ 491 | 
+ 492 |     def _on_apply_complete(self, log):
+ 493 |         self.btn_apply.config(state=tk.NORMAL, text="ПРИМЕНИТЬ ИЗМЕНЕНИЯ", bg="#365880")
+ 494 | 
+ 495 |         # Создаем окно с результатом
+ 496 |         top = tk.Toplevel(self)
+ 497 |         top.title("Результат патча")
+ 498 |         top.geometry("600x400")
+ 499 |         top.configure(bg="#2b2b2b")
+ 500 | 
+ 501 |         st = scrolledtext.ScrolledText(top, bg="#3c3f41", fg="white", font=("Consolas", 10), relief="flat")
+ 502 |         st.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+ 503 |         st.insert(tk.END, log)
+ 504 |         st.configure(state='disabled')
+ 505 | 
+ 506 |     def _on_apply_error(self, error_msg):
+ 507 |         self.btn_apply.config(state=tk.NORMAL, text="ПРИМЕНИТЬ ИЗМЕНЕНИЯ", bg="#365880")
+ 508 |         messagebox.showerror("Критическая ошибка", error_msg)
+ 509 | 
+ 510 |     def toggle_format_hint(self):
+ 511 |         if self.use_md_var.get():
+ 512 |             self.btn_run.config(text="ГЕНЕРИРОВАТЬ MARKDOWN")
+ 513 |         else:
+ 514 |             self.btn_run.config(text="ГЕНЕРИРОВАТЬ LLM-OPTIMIZED TXT")
+ 515 | 
+ 516 | 
+ 517 | 
+ 518 |     def on_param_change(self, *args):
+ 519 |         """Debounced refresh of the tree."""
+ 520 |         if self._debounce_timer:
+ 521 |             self.after_cancel(self._debounce_timer)
+ 522 |         self._debounce_timer = self.after(600, self.refresh_preview_tree)
+ 523 |     def _get_tree_state(self):
+ 524 |         """Collects currently expanded paths and unchecked paths (relative)."""
+ 525 |         expanded = set()
+ 526 |         unchecked = set()
+ 527 |         root_path = self.path_var.get()
+ 528 |         
+ 529 |         if not self.tree.get_children():
+ 530 |             return expanded, unchecked
+ 531 | 
+ 532 |         for item_id, full_path in self.tree_path_map.items():
+ 533 |             # Check expansion
+ 534 |             if self.tree.item(item_id, "open"):
+ 535 |                 try:
+ 536 |                     rel = os.path.relpath(full_path, root_path).replace("\\", "/")
+ 537 |                     expanded.add(rel)
+ 538 |                 except ValueError:
+ 539 |                     pass
+ 540 |             
+ 541 |             # Check checked state
+ 542 |             if not self.tree_checked_state.get(item_id, True):
+ 543 |                 try:
+ 544 |                     rel = os.path.relpath(full_path, root_path).replace("\\", "/")
+ 545 |                     unchecked.add(rel)
+ 546 |                 except ValueError:
+ 547 |                     pass
+ 548 |         return expanded, unchecked
+ 549 | 
+ 550 |     def refresh_preview_tree(self):
+ 551 |         # 1. Capture current state to restore it after refresh
+ 552 |         # If tree is empty (startup), try to load from settings
+ 553 |         if not self.tree_path_map:
+ 554 |             current_expanded = set(self.settings.get("ui_tree_expanded", []))
+ 555 |             current_unchecked = set(self.settings.get("ui_tree_unchecked", []))
+ 556 |         else:
+ 557 |             current_expanded, current_unchecked = self._get_tree_state()
+ 558 | 
+ 559 |         self.tree.delete(*self.tree.get_children())
+ 560 |         self.tree_checked_state.clear()
+ 561 |         self.tree_path_map.clear()
+ 562 |         
+ 563 |         root_path = self.path_var.get()
+ 564 |         if not os.path.exists(root_path):
+ 565 |             return
+ 566 | 
+ 567 |         # Use current settings for scanning (without saving yet to avoid recursion loops)
+ 568 |         cfg = self.settings.copy()
+ 569 |         cfg.update({
+ 570 |             "root_folder": root_path,
+ 571 |             "extensions": self.ext_var.get(),
+ 572 |             "ignore_list": self.ignore_var.get(),
+ 573 |             "strict_mode": self.settings.get("strict_mode", False)
+ 574 |         })
+ 575 | 
+ 576 |         try:
+ 577 |             files, empty_dirs = self.analyzer.scan_directory(cfg)
+ 578 |             files.sort(key=lambda x: x[0])
+ 579 |             
+ 580 |             # Root Node
+ 581 |             root_id = self.tree.insert("", "end", text=f"✅ {root_path}", open=True)
+ 582 |             self.tree_path_map[root_id] = os.path.abspath(root_path)
+ 583 |             self.tree_checked_state[root_id] = True
+ 584 |             
+ 585 |             dir_nodes = {".": root_id}
+ 586 |             
+ 587 |             # Helper to check/uncheck based on saved state
+ 588 |             def set_state(node_id, rel_p, is_dir=False):
+ 589 |                 # Default is True (Checked). Only uncheck if explicitly in unchecked list.
+ 590 |                 # For directories, we default to True, logic propagates.
+ 591 |                 should_be_checked = (rel_p not in current_unchecked)
+ 592 |                 self.tree_checked_state[node_id] = should_be_checked
+ 593 |                 
+ 594 |                 # Restore expansion
+ 595 |                 if is_dir and rel_p in current_expanded:
+ 596 |                     self.tree.item(node_id, open=True)
+ 597 |                 
+ 598 |                 # Update visual text
+ 599 |                 txt = self.tree.item(node_id, "text")
+ 600 |                 prefix = "✅ " if should_be_checked else "⬜ "
+ 601 |                 # Strip existing prefix if logic added it (though we just created it)
+ 602 |                 if txt.startswith("✅ ") or txt.startswith("⬜ "):
+ 603 |                     txt = txt[2:]
+ 604 |                 self.tree.item(node_id, text=prefix + txt)
+ 605 | 
+ 606 |             # Process Files
+ 607 |             for full_path, ext in files:
+ 608 |                 rel_path = os.path.relpath(full_path, root_path)
+ 609 |                 parts = rel_path.split(os.sep)
+ 610 |                 
+ 611 |                 parent_id = root_id
+ 612 |                 current_rel = ""
+ 613 |                 
+ 614 |                 # Create directories
+ 615 |                 for part in parts[:-1]:
+ 616 |                     current_rel = os.path.join(current_rel, part) if current_rel else part
+ 617 |                     rel_slash = current_rel.replace("\\", "/")
+ 618 |                     
+ 619 |                     if current_rel not in dir_nodes:
+ 620 |                         node_id = self.tree.insert(parent_id, "end", text=f"{part}", open=False)
+ 621 |                         dir_nodes[current_rel] = node_id
+ 622 |                         self.tree_path_map[node_id] = os.path.join(root_path, current_rel)
+ 623 |                         set_state(node_id, rel_slash, is_dir=True)
+ 624 |                     parent_id = dir_nodes[current_rel]
+ 625 |                 
+ 626 |                 # Create file
+ 627 |                 fname = parts[-1]
+ 628 |                 file_id = self.tree.insert(parent_id, "end", text=f"{fname} ({ext})")
+ 629 |                 self.tree_path_map[file_id] = full_path
+ 630 |                 set_state(file_id, rel_path.replace("\\", "/"), is_dir=False)
+ 631 |                 
+ 632 |         except Exception as e:
+ 633 |             # If scanning fails (e.g. invalid regex in ignore), just ignore or print
+ 634 |             print(f"Tree update error: {e}")
+ 635 |     def on_tree_click(self, event):
+ 636 |         region = self.tree.identify("region", event.x, event.y)
+ 637 |         element = self.tree.identify_element(event.x, event.y)
+ 638 | 
+ 639 |         # Игнорируем клик по треугольнику раскрытия (пусть работает штатно)
+ 640 |         if "indicator" in element:
+ 641 |             return
+ 642 | 
+ 643 |         if region == "tree":
+ 644 |             item_id = self.tree.identify_row(event.y)
+ 645 |             if not item_id: return
+ 646 |             current = self.tree_checked_state.get(item_id, True)
+ 647 |             self._toggle_item(item_id, not current)
+ 648 |             # Блокируем стандартную обработку (чтобы клик по тексту не вызывал раскрытия/выделения)
+ 649 |             return "break"
+ 650 | 
+ 651 |     def _toggle_item(self, item_id, state):
+ 652 |         self.tree_checked_state[item_id] = state
+ 653 |         txt = self.tree.item(item_id, "text")
+ 654 |         clean_txt = txt[2:] if txt.startswith("✅ ") or txt.startswith("⬜ ") else txt
+ 655 |         prefix = "✅ " if state else "⬜ "
+ 656 |         self.tree.item(item_id, text=prefix + clean_txt)
+ 657 |         for child in self.tree.get_children(item_id):
+ 658 |             self._toggle_item(child, state)
+ 659 |     def browse_folder(self):
+ 660 |         folder = filedialog.askdirectory(initialdir=self.path_var.get())
+ 661 |         if folder: self.path_var.set(folder)
+ 662 | 
+ 663 |     def save_current_settings(self):
+ 664 |         # Get UI state to save
+ 665 |         expanded, unchecked = self._get_tree_state()
+ 666 |         settings_to_save = {
+ 667 |             "root_folder": self.path_var.get(),
+ 668 |             "extensions": self.ext_var.get(),
+ 669 |             "ignore_list": self.ignore_var.get(),
+ 670 |             "output_name": self.out_var.get(),
+ 671 |             "use_markdown": self.use_md_var.get(),
+ 672 |             "add_edit_prompt": self.add_edit_prompt_var.get(),
+ 673 |             "auto_copy_file": self.auto_copy_var.get(),
+ 674 |             "line_numbers": self.line_numbers_var.get(),
+ 675 |             "ollama_model": getattr(self, 'ollama_model_var', tk.StringVar(value="None")).get(),
+ 676 |             "ollama_options": {
+ 677 |                 "num_ctx": int(getattr(self, 'opt_ctx', tk.StringVar(value="24000")).get()),
+ 678 |                 "num_predict": int(getattr(self, 'opt_pred', tk.StringVar(value="12000")).get()),
+ 679 |                 "temperature": float(getattr(self, 'opt_temp', tk.StringVar(value="0.5")).get()),
+ 680 |                 "top_p": float(getattr(self, 'opt_topp', tk.StringVar(value="0.95")).get()),
+ 681 |                 "top_k": int(getattr(self, 'opt_topk', tk.StringVar(value="100")).get())
+ 682 |             },
+ 683 |             "ui_tree_expanded": list(expanded),
+ 684 |             "ui_tree_unchecked": list(unchecked)
+ 685 |         }
+ 686 | 
+ 687 |         self.config_manager.save(settings_to_save)
+ 688 |         return settings_to_save
+ 689 | 
+ 690 |     def start_processing(self):
+ 691 |         settings = self.save_current_settings()
+ 692 |         
+ 693 |         if self.tree.get_children():
+ 694 |             excluded = set()
+ 695 |             for item_id, path in self.tree_path_map.items():
+ 696 |                 # Собираем только явно отключенные файлы (Blacklist approach)
+ 697 |                 if not self.tree_checked_state.get(item_id, True):
+ 698 |                     if os.path.isfile(path):
+ 699 |                         excluded.add(os.path.normcase(os.path.abspath(path)))
+ 700 |             settings["excluded_paths"] = excluded
+ 701 | 
+ 702 |         # Добавляем скрытые настройки, которые не меняются в GUI, но нужны анализатору
+ 703 |         settings["strict_mode"] = self.settings.get("strict_mode", False)
+ 704 |         settings["ignore_self"] = True
+ 705 | 
+ 706 |         self.btn_run.config(state=tk.DISABLED, text="Сканирование...", bg="#555555")
+ 707 |         self.status_var.set("Поиск файлов...")
+ 708 |         self.progress.pack(fill=tk.X, pady=(0, 10))
+ 709 |         self.progress['value'] = 0
+ 710 |         thread = threading.Thread(target=self.run_logic, args=(settings,))
+ 711 |         thread.start()
+ 712 | 
+ 713 |     def update_progress_safe(self, current, total):
+ 714 |         percent = int((current / total) * 100) if total > 0 else 0
+ 715 |         self.after(0, lambda: self._update_ui_progress(current, total, percent))
+ 716 | 
+ 717 |     def _update_ui_progress(self, current, total, percent):
+ 718 |         self.progress['maximum'] = total
+ 719 |         self.progress['value'] = current
+ 720 |         self.status_var.set(f"Обработка: {current}/{total} ({percent}%)")
+ 721 | 
+ 722 |     def run_logic(self, settings):
+ 723 |         try:
+ 724 |             output_path, count, lines = self.analyzer.process(settings, self.update_progress_safe)
+ 725 |             self.after(0, lambda: self.on_success(output_path, count, lines, settings.get("auto_copy_file", False)))
+ 726 |         except Exception as e:
+ 727 |             self.after(0, lambda: self.on_error(str(e)))
+ 728 | 
+ 729 |     def on_success(self, path, count, lines, auto_copy):
+ 730 |         self.toggle_format_hint()
+ 731 |         self.btn_run.config(state=tk.NORMAL, bg="#365880")
+ 732 |         self.status_var.set(f"Готово! Файлов: {count}, Строк: {lines}")
+ 733 |         self.progress.pack_forget()
+ 734 | 
+ 735 |         msg = f"Отчет создан:\n{path}\n\nФайлов: {count}\nСтрок кода: {lines}"
+ 736 |         if auto_copy:
+ 737 |             if copy_file_to_clipboard_windows(path):
+ 738 |                 msg += "\n\n📋 ФАЙЛ СКОПИРОВАН В БУФЕР!"
+ 739 |             else:
+ 740 |                 msg += "\n\n⚠️ Ошибка копирования в буфер."
+ 741 |         messagebox.showinfo("Успех", msg)
+ 742 | 
+ 743 |     def on_error(self, error_msg):
+ 744 |         self.toggle_format_hint()
+ 745 |         self.btn_run.config(state=tk.NORMAL, bg="#365880")
+ 746 |         self.status_var.set("Ошибка выполнения")
+ 747 |         self.progress.pack_forget()
+ 748 |         messagebox.showerror("Ошибка", f"Что-то пошло не так:\n{error_msg}")
+ 749 | 
+ 750 |     def run_ollama_fix(self, text, model):
+ 751 |         if messagebox.askyesno("Auto-Fix", f"JSON некорректен. Попробовать исправить через {model}?"):
+ 752 |             self.editor_status_var.set(f"⏳ Исправление через {model}...")
+ 753 |             self.editor_text.config(state=tk.DISABLED)
+ 754 |             
+ 755 |             def _worker():
+ 756 |                 options = {
+ 757 |                     "num_ctx": int(self.opt_ctx.get()),
+ 758 |                     "num_predict": int(self.opt_pred.get()),
+ 759 |                     "temperature": float(self.opt_temp.get()),
+ 760 |                     "top_p": float(self.opt_topp.get()),
+ 761 |                     "top_k": int(self.opt_topk.get())
+ 762 |                 }
+ 763 |                 client = OllamaClient(model, options)
+ 764 |                 fixed = client.fix_json(text)
+ 765 |                 self.after(0, lambda: self._on_fix_done(fixed))
+ 766 | 
+ 767 |             threading.Thread(target=_worker).start()
+ 768 | 
+ 769 |     def _on_fix_done(self, result):
+ 770 |         self.editor_text.config(state=tk.NORMAL)
+ 771 |         if result:
+ 772 |             # Дополнительная очистка на уровне GUI перед вставкой
+ 773 |             cleaned = clean_json_text(result)
+ 774 |             self.editor_text.delete("1.0", tk.END)
+ 775 |             self.editor_text.insert("1.0", cleaned)
+ 776 |             self.validate_json_ui() # Re-validate
+ 777 |         else:
+ 778 |             self.editor_status_var.set("❌ Не удалось исправить JSON.")
+ 779 |             messagebox.showerror("Ollama", "Модель вернула пустой ответ или произошла ошибка.")
+</file>
+
+<file path="gui/tabs/quality_tab.py">
+   1 | import tkinter as tk
+   2 | from tkinter import ttk, messagebox, scrolledtext
+   3 | import threading
+   4 | from typing import List, Optional
+   5 | 
+   6 | from PIG_T3.core.quality import ProjectScanner, FileMetrics
+   7 | from PIG_T3.utils.dep_installer import DependencyInstaller
+   8 | from config import ConfigManager
+   9 | 
+  10 | 
+  11 | class QualityTab(tk.Frame):
+  12 |     def __init__(self, parent, path_var: tk.StringVar):
+  13 |         super().__init__(parent, bg="#2b2b2b")
+  14 | 
+  15 |         self.scanner: Optional[ProjectScanner] = None
+  16 |         self.metrics_data: List[FileMetrics] = []
+  17 |         self.is_scanning = False
+  18 |         self.sort_orders = {}  # col -> bool (reverse)
+  19 |         self.current_sort_col = "path"  # Текущая колонка сортировки
+  20 |         self.compact_view_var = tk.BooleanVar(value=False) # Переменная для чекбокса
+  21 | 
+  22 | 
+  23 |         self.path_var = path_var
+  24 |         
+  25 |         self.setup_ui()
+  26 | 
+  27 |     def setup_ui(self):
+  28 |         # --- Path Selection (Synchronized) ---
+  29 |         path_frame = tk.Frame(self, bg="#2b2b2b", pady=5, padx=5)
+  30 |         path_frame.pack(fill=tk.X)
+  31 |         tk.Label(path_frame, text="Целевая папка:", bg="#2b2b2b", fg="#a9b7c6").pack(side=tk.LEFT)
+  32 |         tk.Entry(path_frame, textvariable=self.path_var, bg="#3c3f41", fg="white",
+  33 |                  insertbackground="white", relief="flat").pack(side=tk.LEFT, fill=tk.X, expand=True, padx=10)
+  34 | 
+  35 |         # --- Toolbar ---
+  36 |         toolbar = tk.Frame(self, bg="#2b2b2b", pady=5, padx=5)
+  37 |         toolbar.pack(fill=tk.X)
+  38 | 
+  39 |         self.btn_scan = tk.Button(toolbar, text="🚀 ЗАПУСТИТЬ АНАЛИЗ", command=self.start_scan,
+  40 |                                   bg="#365880", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", padx=15)
+  41 |         self.btn_scan.pack(side=tk.LEFT)
+  42 | 
+  43 |         self.status_lbl = tk.Label(toolbar, text="Нажмите кнопку для начала аудита", bg="#2b2b2b", fg="#a9b7c6")
+  44 |         self.status_lbl.pack(side=tk.LEFT, padx=15)
+  45 | 
+  46 |         # Progress Bar
+  47 |         self.progress = ttk.Progressbar(toolbar, orient="horizontal", mode="determinate", style="Horizontal.TProgressbar")
+  48 | 
+  49 |         # Checkbox for Compact Mode
+  50 |         self.cb_compact = ttk.Checkbutton(toolbar, text="Свёрнутый вид (только важные)", 
+  51 |                                           variable=self.compact_view_var, 
+  52 |                                           style="TCheckbutton", command=self.update_columns_visibility)
+  53 |         self.cb_compact.pack(side=tk.RIGHT, padx=10)
+  54 | 
+  55 |         # --- Split View (Tree + Details) ---
+  56 |         paned = tk.PanedWindow(self, orient=tk.VERTICAL, bg="#2b2b2b", sashwidth=4, sashrelief="flat")
+  57 |         paned.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+  58 | 
+  59 |         # 1. Treeview Frame
+  60 |         tree_frame = tk.Frame(paned, bg="#2b2b2b")
+  61 |         paned.add(tree_frame, height=400)
+  62 | 
+  63 |         cols = ("path", "sloc", "cc", "mi", "score", "sec")
+  64 |         self.tree = ttk.Treeview(tree_frame, columns=cols, show="headings", selectmode="browse")
+  65 |         
+  66 |         # Scrollbars
+  67 |         vsb = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
+  68 |         hsb = ttk.Scrollbar(tree_frame, orient="horizontal", command=self.tree.xview)
+  69 |         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+  70 |         
+  71 |         self.tree.grid(row=0, column=0, sticky="nsew")
+  72 |         vsb.grid(row=0, column=1, sticky="ns")
+  73 |         hsb.grid(row=1, column=0, sticky="ew")
+  74 |         tree_frame.grid_rowconfigure(0, weight=1)
+  75 |         tree_frame.grid_columnconfigure(0, weight=1)
+  76 | 
+  77 |         # Columns Setup
+  78 |         headers = {
+  79 |             "path": "📄 Файл (Путь)",
+  80 |             "sloc": "📝 Строк",
+  81 |             "cc": "🌀 Сложность",
+  82 |             "mi": "🛠️ Поддерж.",
+  83 |             "score": "⭐ Score",
+  84 |             "sec": "🛡️ Безоп."
+  85 |         }
+  86 |         
+  87 |         for col in cols:
+  88 |             self.tree.heading(col, text=headers[col], command=lambda c=col: self.sort_by(c))
+  89 |             self.sort_orders[col] = False
+  90 | 
+  91 |         self.tree.column("path", width=300, anchor="w")
+  92 |         self.tree.column("sloc", width=70, anchor="center")
+  93 |         self.tree.column("cc", width=90, anchor="center")
+  94 |         self.tree.column("mi", width=110, anchor="center")
+  95 |         self.tree.column("score", width=90, anchor="center")
+  96 |         self.tree.column("sec", width=90, anchor="center")
+  97 | 
+  98 |         # Colors Config
+  99 |         self.tree.tag_configure("green", foreground="#98c379")
+ 100 |         self.tree.tag_configure("yellow", foreground="#e5c07b")
+ 101 |         self.tree.tag_configure("red", foreground="#e06c75", font=("Segoe UI", 9, "bold"))
+ 102 | 
+ 103 |         self.tree.bind("<<TreeviewSelect>>", self.on_select)
+ 104 | 
+ 105 |         # 2. Details Frame
+ 106 |         details_frame = tk.LabelFrame(paned, text="📋 Детали найденных проблем", bg="#2b2b2b", fg="#a9b7c6")
+ 107 |         paned.add(details_frame, height=200)
+ 108 | 
+ 109 |         self.details_text = scrolledtext.ScrolledText(details_frame, bg="#3c3f41", fg="#dcdcdc", 
+ 110 |                                                       font=("Consolas", 10), relief="flat")
+ 111 |         self.details_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+ 112 |         self.details_text.tag_config("err", foreground="#e06c75")
+ 113 |         self.details_text.tag_config("warn", foreground="#e5c07b")
+ 114 |         self.details_text.tag_config("info", foreground="#61afef")
+ 115 | 
+ 116 |     def _update_progress_ui(self, percent, text):
+ 117 |         self.progress['value'] = percent
+ 118 |         self.status_lbl.config(text=f"{text} ({percent}%)")
+ 119 | 
+ 120 |     def start_scan(self):
+ 121 |         path = self.path_var.get()
+ 122 |         if not path:
+ 123 |             messagebox.showwarning("Ошибка", "Выберите папку проекта на вкладке Генератора.")
+ 124 |             return
+ 125 |             
+ 126 |         if self.is_scanning:
+ 127 |             if not messagebox.askyesno("Подтверждение", "Анализ уже выполняется. Вы уверены, что хотите перезапустить процесс?"):
+ 128 |                 return
+ 129 | 
+ 130 |         self.is_scanning = True
+ 131 |         self.btn_scan.config(text="⏳ ОСТАНОВИТЬ / ПЕРЕЗАПУСТИТЬ", bg="#4b7aa6")
+ 132 |         # Кнопку не блокируем (state normal), чтобы можно было нажать для перезапуска
+ 133 |         
+ 134 |         self.tree.delete(*self.tree.get_children())
+ 135 |         self.details_text.delete("1.0", tk.END)
+ 136 | 
+ 137 |         # Show progress bar
+ 138 |         self.progress.pack(side=tk.LEFT, padx=10, fill=tk.X, expand=True)
+ 139 |         self.progress['value'] = 0
+ 140 |         
+ 141 |         threading.Thread(target=self._run_scan_thread, args=(path,), daemon=True).start()
+ 142 |     def _run_scan_thread(self, path):
+ 143 |         # 1. Check Deps
+ 144 |         def update_lbl(text): 
+ 145 |             self.after(0, lambda: self.status_lbl.config(text=text))
+ 146 | 
+ 147 |         def update_progress(percent, text):
+ 148 |             self.after(0, lambda: self._update_progress_ui(percent, text))
+ 149 |         
+ 150 |         if not DependencyInstaller.check_and_install(callback=update_lbl):
+ 151 |             self.after(0, lambda: messagebox.showerror("Ошибка", "Не удалось установить анализаторы."))
+ 152 |             def _reset_fail():
+ 153 |                 self.is_scanning = False
+ 154 |                 self.btn_scan.config(text="🚀 ЗАПУСТИТЬ АНАЛИЗ", bg="#365880")
+ 155 |             self.after(0, _reset_fail)
+ 156 |             return
+ 157 | 
+ 158 |         # 2. Run Scan
+ 159 |         self.scanner = ProjectScanner(path)
+ 160 |         data = self.scanner.scan(progress_callback=update_progress)
+ 161 |         
+ 162 |         self.after(0, lambda: self._on_scan_complete(data))
+ 163 | 
+ 164 |     def _on_scan_complete(self, data: List[FileMetrics]):
+ 165 |         self.is_scanning = False
+ 166 |         self.btn_scan.config(text="🚀 ЗАПУСТИТЬ АНАЛИЗ", bg="#365880")
+ 167 |         self.progress.pack_forget()  # Hide progress bar
+ 168 |         self.metrics_data = data
+ 169 |         self.populate_tree(data)
+ 170 |         
+ 171 |         # Generate Statistics
+ 172 |         total = len(data)
+ 173 |         reds = sum(1 for m in data if m.overall_status == "red")
+ 174 |         yellows = sum(1 for m in data if m.overall_status == "yellow")
+ 175 |         greens = total - reds - yellows
+ 176 |         
+ 177 |         stats_msg = f"Всего файлов: {total} | 🔴 Critical: {reds} | ⚠️ Warnings: {yellows} | ✅ Clean: {greens}"
+ 178 |         self.status_lbl.config(text=stats_msg)
+ 179 |         
+ 180 |         if reds > 0:
+ 181 |              self.status_lbl.config(fg="#e06c75")
+ 182 |         else:
+ 183 |              self.status_lbl.config(fg="#98c379")
+ 184 | 
+ 185 |     def _get_icon(self, status):
+ 186 |         if status == "green": return "✅"
+ 187 |         if status == "yellow": return "⚠️"
+ 188 |         return "❌"
+ 189 | 
+ 190 |     def populate_tree(self, data: List[FileMetrics]):
+ 191 |         self.tree.delete(*self.tree.get_children())
+ 192 |         sort_col = self.current_sort_col
+ 193 |         
+ 194 |         for m in data:
+ 195 |             # Icons
+ 196 |             cc_icon = self._get_icon(m.status_cc)
+ 197 |             mi_icon = self._get_icon(m.status_mi)
+ 198 |             sc_icon = self._get_icon(m.status_pylint)
+ 199 |             sec_icon = self._get_icon(m.status_security)
+ 200 | 
+ 201 |             # Values
+ 202 |             sloc_str = f"{m.sloc}"
+ 203 |             cc_str = f"{m.complexity:>4.1f} {cc_icon}"
+ 204 |             mi_str = f"{m.maintainability:>5.1f} {mi_icon}"
+ 205 |             sc_str = f"{m.pylint_score:>4.1f} {sc_icon}"
+ 206 |             sec_str = f"{m.security_issues:>2} {sec_icon}"
+ 207 | 
+ 208 |             values = (m.path, sloc_str, cc_str, mi_str, sc_str, sec_str)
+ 209 | 
+ 210 |             # Tag determination
+ 211 |             if sort_col == "path":
+ 212 |                 tag = m.overall_status
+ 213 |             else:
+ 214 |                 tag = m.get_status_for_column(sort_col)
+ 215 | 
+ 216 |             self.tree.insert("", "end", iid=m.path, values=values, tags=(tag,))
+ 217 | 
+ 218 |     def sort_by(self, col):
+ 219 |         # Переключаем порядок
+ 220 |         descending = not self.sort_orders[col]
+ 221 |         self.sort_orders[col] = descending
+ 222 |         
+ 223 |         # Индикатор сортировки в заголовке
+ 224 |         for c in self.tree["columns"]:
+ 225 |             clean_text = self.tree.heading(c, "text").replace(" 🔼", "").replace(" 🔽", "")
+ 226 |             self.tree.heading(c, text=clean_text)
+ 227 |         
+ 228 |         arrow = " 🔽" if descending else " 🔼"
+ 229 |         self.tree.heading(col, text=self.tree.heading(col, "text") + arrow)
+ 230 | 
+ 231 |         # Сортировка данных
+ 232 |         self.current_sort_col = col  # Запоминаем текущую колонку
+ 233 | 
+ 234 |         def get_sort_key(m: FileMetrics):
+ 235 |             if col == "path": return m.path
+ 236 |             if col == "sloc": return m.sloc
+ 237 |             if col == "cc": return m.complexity
+ 238 |             if col == "mi": return m.maintainability
+ 239 |             if col == "score": return m.pylint_score
+ 240 |             if col == "sec": return m.security_issues
+ 241 |             return 0
+ 242 | 
+ 243 |         self.metrics_data.sort(key=get_sort_key, reverse=descending)
+ 244 |         self.populate_tree(self.metrics_data)
+ 245 |         self.update_columns_visibility() # Обновляем видимость колонок
+ 246 | 
+ 247 |     def update_columns_visibility(self):
+ 248 |         """
+ 249 |         Реализует логику 'В свёрнутом виде отображается только та метрика, по которой сортировка'.
+ 250 |         Если сортировка по Пути, показываем Путь + CC (как самую важную).
+ 251 |         """
+ 252 |         if self.compact_view_var.get():
+ 253 |             target_col = self.current_sort_col
+ 254 |             
+ 255 |             if target_col == "path":
+ 256 |                 # Default compact view: Path + Complexity
+ 257 |                 display_cols = ("path", "cc")
+ 258 |             else:
+ 259 |                 # Dynamic compact view: Path + Sorted Metric
+ 260 |                 display_cols = ("path", target_col)
+ 261 |             
+ 262 |             self.tree["displaycolumns"] = display_cols
+ 263 |         else:
+ 264 |             self.tree["displaycolumns"] = "#all"
+ 265 |     def on_select(self, event):
+ 266 |         selected_items = self.tree.selection()
+ 267 |         if not selected_items: return
+ 268 |         
+ 269 |         path = selected_items[0]
+ 270 |         metric = next((m for m in self.metrics_data if m.path == path), None)
+ 271 |         
+ 272 |         self.details_text.delete("1.0", tk.END)
+ 273 |         if not metric:
+ 274 |             return
+ 275 | 
+ 276 |         # --- Rich Header Generation ---
+ 277 |         self.details_text.insert(tk.END, f"📄 ANALYSIS REPORT: {metric.path}\n", "header_main")
+ 278 |         self.details_text.tag_config("header_main", font=("Segoe UI", 12, "bold"), foreground="white", background="#365880")
+ 279 |         
+ 280 |         self.details_text.insert(tk.END, "-"*80 + "\n")
+ 281 |         
+ 282 |         # Helper to print metric line
+ 283 |         def print_metric(label, value, status, extra=""):
+ 284 |             icon = self._get_icon(status)
+ 285 |             color = "#98c379" if status == "green" else "#e5c07b" if status == "yellow" else "#e06c75"
+ 286 |             tag_name = f"stat_{label}"
+ 287 |             self.details_text.tag_config(tag_name, foreground=color, font=("Consolas", 10, "bold"))
+ 288 |             
+ 289 |             self.details_text.insert(tk.END, f"{label:<20}: ", "label_def")
+ 290 |             self.details_text.insert(tk.END, f"{value} {icon} {extra}\n", tag_name)
+ 291 | 
+ 292 |         self.details_text.tag_config("label_def", foreground="#a9b7c6")
+ 293 | 
+ 294 |         print_metric("Cyclomatic Complex.", metric.complexity, metric.status_cc, "(Lower is better)")
+ 295 |         print_metric("Maintainability I.", metric.maintainability, metric.status_mi, "(Higher is better)")
+ 296 |         print_metric("Linter Score", metric.pylint_score, metric.status_pylint, "(Max 10.0)")
+ 297 |         print_metric("Security Issues", metric.security_issues, metric.status_security, "(Bandit Audit)")
+ 298 |         
+ 299 |         self.details_text.insert(tk.END, "-"*80 + "\n\n")
+ 300 | 
+ 301 |         # --- Issues List ---
+ 302 |         if not metric.issues:
+ 303 |             self.details_text.insert(tk.END, "✨ Great Job! No issues detected in this file.\n", "green")
+ 304 |         else:
+ 305 |             self.details_text.insert(tk.END, f"🔍 FOUND {len(metric.issues)} ISSUES:\n", "header_issues")
+ 306 |             self.details_text.tag_config("header_issues", foreground="#e5c07b", font=("Segoe UI", 10, "bold"))
+ 307 | 
+ 308 |             for i, issue in enumerate(metric.issues, 1):
+ 309 |                 prefix = "[INFO]" 
+ 310 |                 tag = "info"
+ 311 |                 if issue.severity == "warning": 
+ 312 |                     prefix = "[WARN]"
+ 313 |                     tag = "warn"
+ 314 |                 elif issue.severity == "error": 
+ 315 |                     prefix = "[CRIT]"
+ 316 |                     tag = "err"
+ 317 |                 
+ 318 |                 self.details_text.insert(tk.END, f"{i:02d}. ", "dim")
+ 319 |                 self.details_text.insert(tk.END, f"{prefix:<6} ", tag)
+ 320 |                 self.details_text.insert(tk.END, f"Line {issue.line:<4} ", "line_num")
+ 321 |                 self.details_text.insert(tk.END, f"[{issue.tool.upper()}] ", "tool_tag")
+ 322 |                 self.details_text.insert(tk.END, f"{issue.msg}\n")
+ 323 | 
+ 324 |         self.details_text.tag_config("line_num", foreground="#61afef")
+ 325 |         self.details_text.tag_config("tool_tag", foreground="#c678dd")
+ 326 |         self.details_text.tag_config("dim", foreground="#5c6370")
+</file>
+
+<file path="utils/__init__.py">
+
+</file>
+
+<file path="utils/clipboard.py">
+   1 | import os
+   2 | import ctypes
+   3 | from ctypes import wintypes
+   4 | 
+   5 | 
+   6 | def copy_file_to_clipboard_windows(filepath):
+   7 |     """
+   8 |     Кладет ФАЙЛ (не текст) в буфер обмена Windows.
+   9 |     Работает через ctypes для 64-битных систем.
+  10 |     """
+  11 |     try:
+  12 |         # Константы
+  13 |         CF_HDROP = 15
+  14 |         GHND = 0x0042
+  15 | 
+  16 |         # Определение структуры DROPFILES
+  17 |         class DROPFILES(ctypes.Structure):
+  18 |             _fields_ = [("pFiles", wintypes.DWORD),
+  19 |                         ("pt", wintypes.POINT),
+  20 |                         ("fNC", wintypes.BOOL),
+  21 |                         ("fWide", wintypes.BOOL)]
+  22 | 
+  23 |         # Подготовка данных
+  24 |         pDropFiles = DROPFILES()
+  25 |         pDropFiles.pFiles = ctypes.sizeof(DROPFILES)
+  26 |         pDropFiles.fWide = True
+  27 |         # Путь должен завершаться двойным null-терминатором
+  28 |         files_list = os.path.abspath(filepath) + "\0\0"
+  29 |         files_data = files_list.encode("utf-16le")
+  30 |         total_size = ctypes.sizeof(DROPFILES) + len(files_data)
+  31 | 
+  32 |         # Настройка API функций
+  33 |         kernel32 = ctypes.windll.kernel32
+  34 |         user32 = ctypes.windll.user32
+  35 |         kernel32.GlobalAlloc.argtypes = [wintypes.UINT, ctypes.c_size_t]
+  36 |         kernel32.GlobalAlloc.restype = wintypes.HGLOBAL
+  37 |         kernel32.GlobalLock.argtypes = [wintypes.HGLOBAL]
+  38 |         kernel32.GlobalLock.restype = ctypes.c_void_p
+  39 |         kernel32.GlobalUnlock.argtypes = [wintypes.HGLOBAL]
+  40 |         kernel32.GlobalUnlock.restype = wintypes.BOOL
+  41 |         user32.OpenClipboard.argtypes = [wintypes.HWND]
+  42 |         user32.OpenClipboard.restype = wintypes.BOOL
+  43 |         user32.EmptyClipboard.argtypes = []
+  44 |         user32.EmptyClipboard.restype = wintypes.BOOL
+  45 |         user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
+  46 |         user32.SetClipboardData.restype = wintypes.HANDLE
+  47 |         user32.CloseClipboard.argtypes = []
+  48 |         user32.CloseClipboard.restype = wintypes.BOOL
+  49 | 
+  50 |         # Выделение памяти
+  51 |         hGlobal = kernel32.GlobalAlloc(GHND, total_size)
+  52 |         if not hGlobal:
+  53 |             return False
+  54 |         target_ptr = kernel32.GlobalLock(hGlobal)
+  55 |         if not target_ptr:
+  56 |             return False
+  57 | 
+  58 |         # Копирование структуры и пути
+  59 |         ctypes.memmove(target_ptr, ctypes.byref(pDropFiles), ctypes.sizeof(DROPFILES))
+  60 |         ctypes.memmove(target_ptr + ctypes.sizeof(DROPFILES), files_data, len(files_data))
+  61 |         kernel32.GlobalUnlock(hGlobal)
+  62 | 
+  63 |         # Работа с буфером обмена
+  64 |         if not user32.OpenClipboard(None):
+  65 |             return False
+  66 |         user32.EmptyClipboard()
+  67 |         user32.SetClipboardData(CF_HDROP, hGlobal)
+  68 |         user32.CloseClipboard()
+  69 |         return True
+  70 |     except Exception as e:
+  71 |         print(f"Ошибка копирования файла в буфер: {e}")
+  72 |         return False
+</file>
+
+<file path="utils/dep_installer.py">
+   1 | import sys
+   2 | import subprocess
+   3 | import importlib.util
+   4 | 
+   5 | REQUIRED_TOOLS = ["radon", "pylint", "vulture", "bandit"]
+   6 | 
+   7 | class DependencyInstaller:
+   8 |     @staticmethod
+   9 |     def check_and_install(callback=None) -> bool:
+  10 |         """
+  11 |         Проверяет и устанавливает зависимости. 
+  12 |         callback(text): функция для обновления статуса в UI.
+  13 |         """
+  14 |         missing = []
+  15 |         for tool in REQUIRED_TOOLS:
+  16 |             if importlib.util.find_spec(tool) is None:
+  17 |                 missing.append(tool)
+  18 |         
+  19 |         if not missing:
+  20 |             return True
+  21 |         
+  22 |         if callback:
+  23 |             callback(f"Установка библиотек: {', '.join(missing)}...")
+  24 |             
+  25 |         try:
+  26 |             cmd = [sys.executable, "-m", "pip", "install"] + missing
+  27 |             subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+  28 |             return True
+  29 |         except subprocess.CalledProcessError:
+  30 |             if callback:
+  31 |                 callback("Ошибка установки зависимостей.")
+  32 |             return False
+</file>
+
+
+================================================================================
+SYSTEM INSTRUCTION: HOW TO MODIFY CODE (JSON FORMAT)
+================================================================================
+You are a coding assistant. To modify code, you MUST return the response strictly in JSON format.
+Do not use old formats with separators. Use only the JSON structure described below.
+
+👉 RESPONSE STRUCTURE (JSON):
+Return a list of operations within a root array. Example:
+```json
+[
+  {
+    "action": "create",
+    "path": "path/to/new_file.py",
+    "content": "print('Hello World')\n"
+  },
+  {
+    "action": "delete",
+    "path": "path/to/obsolete_file.py"
+  },
+  {
+    "action": "edit",
+    "path": "path/to/existing_file.py",
+    "operations": [
+       {
+         "type": "replace_lines",
+         "start": 10, "end": 12,
+         "content": "    new_code_here()\n    another_line()"
+       },
+       {
+         "type": "replace_text",
+         "find": "old_exact_string_code()",
+         "replace": "new_exact_string_code()"
+       }
+    ]
+  }
+]
+```
+
+👉 OPERATIONS EXPLANATION:
+1. **action: create** — Creates a new file (or overwrites it entirely). Requires 'content'.
+2. **action: delete** — Deletes a file.
+3. **action: edit** — Modifies an existing file. Requires 'operations' array.
+   - **type: replace_lines**: Replaces lines from 'start' to 'end' (inclusive, 1-based numbering). Ideal if line numbers are enabled.
+   - **type: insert_after_line**: Inserts 'content' strictly AFTER the specified 'line' number.
+   - **type: replace_text**: Searches for an exact match of text 'find' and changes it to 'replace'. Pay attention to indentation.
+
+IMPORTANT: When using 'replace_lines', ensure line numbers correspond to the current context.
+⚠️ VERY IMPORTANT: Do not include neighboring lines (context) in 'content' if you have not changed them and have not included them in the 'start'-'end' range. This leads to code duplication!

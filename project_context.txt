@@ -1,0 +1,3480 @@
+PROJECT CONTEXT REPORT
+Generated: 2026-02-03 19:37:15
+Total Files: 13
+Total Lines: 3406
+
+INSTRUCTION FOR AI:
+This file contains the full source code of a project.
+The structure is provided in the <project_structure> tag.
+Each file's content is wrapped in a <file path="..."> tag.
+Use this context to understand the codebase.
+================================================================================
+
+<project_structure>
+├── assets (empty)
+├── css
+│ └── style.css
+├── index.html
+├── js
+│ ├── auth.js
+│ ├── config.js
+│ ├── database.js
+│ ├── economyController.js
+│ ├── game.js
+│ ├── main.js
+│ ├── onboarding.js
+│ ├── services.js
+│ ├── state.js
+│ └── ui.js
+└── main.py
+</project_structure>
+
+================================================================================
+FILE CONTENTS
+================================================================================
+
+<file path="css/style.css">
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+    --neon-cyan: #00ffff;
+    --neon-pink: #ff00ff;
+    --neon-blue: #0080ff;
+    --dark-bg: #0a0a14;
+    --glass-bg: rgba(15, 15, 30, 0.85);
+    --glass-border: rgba(0, 255, 255, 0.2);
+}
+body { font-family: 'Rajdhani', sans-serif; background: var(--dark-bg); color: #fff; overflow-x: hidden; }
+.orbitron { font-family: 'Orbitron', sans-serif; }
+
+/* Ocean BG */
+.ocean-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: linear-gradient(180deg, #0a0a14 0%, #001a33 50%, #000d1a 100%); }
+.wave { position: absolute; width: 200%; height: 100%; background: radial-gradient(ellipse at center, rgba(0, 128, 255, 0.15) 0%, transparent 70%); animation: wave-animation 15s infinite linear; }
+.wave:nth-child(2) { animation-duration: 20s; animation-delay: -5s; opacity: 0.7; }
+@keyframes wave-animation { 0% { transform: translateX(0) translateY(0); } 50% { transform: translateX(-25%) translateY(-10px); } 100% { transform: translateX(0) translateY(0); } }
+
+/* UI Elements */
+.glass { background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); }
+.neon-text { text-shadow: 0 0 10px currentColor; }
+.btn-primary { background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue)); transition: all 0.2s; position: relative; overflow: hidden; color: #000; }
+.btn-primary:active { transform: scale(0.96); }
+.btn-secondary { background: rgba(255, 0, 255, 0.15); border: 1px solid var(--neon-pink); color: #fff; transition: all 0.2s; }
+.btn-secondary:active { transform: scale(0.96); background: rgba(255, 0, 255, 0.3); }
+
+/* Screens */
+.screen { display: none; animation: fadeIn 0.4s ease-out; width: 100%; }
+.screen.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* GRID SYSTEM — адаптивность: aspect-ratio, max-width 90vw */
+.ship-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 2px;
+    max-width: min(340px, 90vw);
+    margin: 0 auto;
+    aspect-ratio: 1;
+}
+.cell { background: rgba(0, 128, 255, 0.1); border: 1px solid rgba(0, 255, 255, 0.2); cursor: pointer; position: relative; }
+.cell.ship { background: rgba(0, 255, 255, 0.5); box-shadow: inset 0 0 10px var(--neon-cyan); }
+.cell.hit { background: radial-gradient(circle, #ff4444, #880000); animation: explosion 0.4s ease-out; }
+.cell.miss { background: rgba(255, 255, 255, 0.1); }
+.cell.miss::after { content: '•'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.5); }
+.cell.sunk { background: #ff0000; border-color: #ffaa00; box-shadow: 0 0 15px #ff4400; animation: sink 0.5s ease-out; }
+.cell.fog { filter: brightness(0.4); }
+@keyframes pop { 0% { transform: scale(0.8); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+@keyframes explosion {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.8); }
+    50% { transform: scale(1.15); box-shadow: 0 0 20px 8px rgba(255, 0, 0, 0.6); }
+    100% { transform: scale(1); box-shadow: 0 0 15px #ff4400; }
+}
+@keyframes sink {
+    0% { opacity: 1; filter: brightness(1); }
+    100% { opacity: 1; filter: brightness(1.2); box-shadow: 0 0 20px #ff4400; }
+}
+
+/* Fog of war — затемнение неоткрытых клеток врага */
+.ship-grid.fog-of-war .cell:not(.hit):not(.miss) { filter: brightness(0.35); }
+.ship-grid.fog-of-war .cell.hit,
+.ship-grid.fog-of-war .cell.miss { filter: none; }
+
+/* Modal */
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 999; display: none; align-items: center; justify-content: center; }
+.modal.active { display: flex; }
+
+/* Shake Animation */
+.shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
+
+/* Hover effects */
+.btn-primary:hover {
+    filter: brightness(1.2);
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+    transform: translateY(-2px);
+}
+.btn-secondary:hover {
+    background: rgba(255, 0, 255, 0.3);
+    border-color: var(--neon-pink);
+    box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+    transform: translateY(-2px);
+}
+.glass:hover {
+    background: rgba(20, 20, 45, 0.95);
+    border-color: rgba(0, 255, 255, 0.5);
+    transform: scale(1.02);
+}
+button, .glass, input {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Кнопка «Назад» на каждом экране — удобный тап и видимость */
+.btn-back {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 12px;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    -webkit-tap-highlight-color: transparent;
+}
+.btn-back:hover { opacity: 0.9; }
+.btn-back:active { opacity: 0.8; }
+.btn-back:focus { outline: none; }
+.btn-back:focus-visible { outline: 2px solid var(--neon-cyan); outline-offset: 2px; }
+
+/* Toast Notifications */
+#toast-container {
+    max-width: 400px;
+    margin: 0 auto;
+}
+.toast {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: #fff;
+    font-size: 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    pointer-events: auto;
+    animation: toastSlideIn 0.3s ease-out;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+}
+.toast.toast-success { border-color: var(--neon-cyan); }
+.toast.toast-error { border-color: #ff4444; }
+.toast.toast-info { border-color: var(--neon-blue); }
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+.toast.toast-exit {
+    animation: toastSlideOut 0.3s ease-in forwards;
+}
+@keyframes toastSlideOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+}
+
+/* Onboarding */
+.onboarding-slide {
+    animation: fadeIn 0.4s ease-out;
+}
+</file>
+
+<file path="index.html">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Naval Warfare 2077</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <div class="ocean-bg"><div class="wave"></div><div class="wave"></div></div>
+    
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 left-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- 0. ONBOARDING SCREEN -->
+    <div id="screen-onboarding" class="screen">
+        <div class="flex flex-col items-center justify-center min-h-screen p-6">
+            <div class="w-full max-w-md space-y-6">
+                <!-- Slide 1: Fleet Placement -->
+                <div id="onboarding-slide-1" class="onboarding-slide">
+                    <div class="glass rounded-2xl p-8 text-center">
+                        <div class="text-6xl mb-4">🚢</div>
+                        <h2 class="text-2xl font-bold mb-4 text-cyan-400" data-key="onboarding_slide1_title">FLEET PLACEMENT</h2>
+                        <p class="text-sm opacity-90 mb-6" data-key="onboarding_slide1_text">Place your ships on the board...</p>
+                    </div>
+                </div>
+                
+                <!-- Slide 2: Abilities -->
+                <div id="onboarding-slide-2" class="onboarding-slide hidden">
+                    <div class="glass rounded-2xl p-8 text-center">
+                        <div class="text-6xl mb-4">⚡</div>
+                        <h2 class="text-2xl font-bold mb-4 text-cyan-400" data-key="onboarding_slide2_title">TACTICAL ABILITIES</h2>
+                        <p class="text-sm opacity-90 mb-6" data-key="onboarding_slide2_text">Buy abilities in the shop...</p>
+                    </div>
+                </div>
+                
+                <!-- Slide 3: Rating -->
+                <div id="onboarding-slide-3" class="onboarding-slide hidden">
+                    <div class="glass rounded-2xl p-8 text-center">
+                        <div class="text-6xl mb-4">🏆</div>
+                        <h2 class="text-2xl font-bold mb-4 text-cyan-400" data-key="onboarding_slide3_title">RATING & ECONOMY</h2>
+                        <p class="text-sm opacity-90 mb-6" data-key="onboarding_slide3_text">Win matches to increase rating...</p>
+                    </div>
+                </div>
+                
+                <!-- Navigation -->
+                <div class="flex gap-2">
+                    <button id="onboarding-skip" class="flex-1 btn-secondary p-3 rounded text-sm" data-key="onboarding_skip">SKIP</button>
+                    <button id="onboarding-next" class="flex-1 btn-primary p-3 rounded text-sm" data-key="onboarding_next">NEXT</button>
+                    <button id="onboarding-start" class="flex-1 btn-primary p-3 rounded text-sm hidden" data-key="onboarding_start">START</button>
+                </div>
+                
+                <!-- Dots indicator -->
+                <div class="flex justify-center gap-2">
+                    <div id="onboarding-dot-1" class="w-2 h-2 rounded-full bg-cyan-400"></div>
+                    <div id="onboarding-dot-2" class="w-2 h-2 rounded-full bg-white/30"></div>
+                    <div id="onboarding-dot-3" class="w-2 h-2 rounded-full bg-white/30"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. LANGUAGE SCREEN -->
+    <div id="screen-language" class="screen active">
+        <div class="flex flex-col items-center justify-center min-h-screen p-6">
+            <h1 class="text-5xl font-black orbitron text-cyan-400 mb-8 text-center neon-text" data-key="app_title">NAVAL<br>WARFARE</h1>
+            <div class="w-full max-w-sm space-y-4">
+                <button onclick="setLanguage('en')" class="w-full glass rounded-2xl p-6 flex items-center gap-4 active:scale-95 transition">
+                    <span class="text-4xl">🇬🇧</span> <span class="text-2xl font-bold" data-key="lang_en">English</span>
+                </button>
+                <button onclick="setLanguage('ru')" class="w-full glass rounded-2xl p-6 flex items-center gap-4 active:scale-95 transition">
+                    <span class="text-4xl">🇷🇺</span> <span class="text-2xl font-bold" data-key="lang_ru">Русский</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. REGISTER SCREEN -->
+    <div id="screen-register" class="screen">
+        <div class="flex flex-col items-center justify-center min-h-screen p-6">
+            <button type="button" onclick="showScreen('screen-language')" class="btn-back self-start mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
+            <div class="glass rounded-3xl p-8 w-full max-w-md">
+                <h2 class="text-2xl font-bold orbitron text-cyan-400 mb-2" data-key="welcome">Welcome</h2>
+                <label for="input-nickname"></label>
+                <input id="input-nickname" type="text" data-key="nick_placeholder" placeholder="Nickname..." class="w-full bg-black/50 border border-cyan-400/50 rounded-xl px-4 py-3 text-white mb-4 outline-none focus:border-cyan-400">
+                <button id="btn-register" class="w-full btn-primary rounded-xl py-4 font-bold text-lg orbitron" data-key="deploy">DEPLOY</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. LOBBY / DASHBOARD -->
+    <div id="screen-dashboard" class="screen">
+        <div class="p-4 pb-24 min-h-screen">
+            <div class="flex items-center gap-2 mb-4">
+                <button type="button" onclick="showScreen('screen-language')" class="btn-back text-cyan-400 text-sm font-medium flex items-center gap-1">
+                    <span aria-hidden="true">←</span> <span data-key="back">Back</span>
+                </button>
+            </div>
+            <div class="flex justify-between items-center mb-6 pt-2">
+                <div>
+                    <h1 class="text-2xl font-bold orbitron text-cyan-400" data-key="dashboard_command">COMMAND</h1>
+                    <p id="user-display-name" class="text-sm opacity-70">Cadet</p>
+                </div>
+                <button onclick="showScreen('screen-settings')" class="glass p-2 rounded-lg text-cyan-400"><iconify-icon icon="lucide:settings" width="24"></iconify-icon></button>
+            </div>
+
+            <div class="glass rounded-2xl p-4 mb-6 flex justify-around text-center">
+                <div><div class="text-2xl font-bold text-yellow-400" id="dash-coins">0</div><div class="text-xs opacity-60" data-key="stats_coins">Coins</div></div>
+                <div><div class="text-2xl font-bold text-green-400" id="dash-wins">0</div><div class="text-xs opacity-60" data-key="stats_wins">Wins</div></div>
+                <div><div class="text-2xl font-bold text-pink-400" id="dash-winrate">0%</div><div class="text-xs opacity-60" data-key="stats_winrate">WinRate</div></div>
+            </div>
+
+            <div class="space-y-3">
+                <button onclick="queueRandom()" class="w-full btn-primary rounded-2xl py-5 font-bold text-lg flex items-center justify-center gap-3">
+                    <iconify-icon icon="lucide:radar" width="24"></iconify-icon> <span data-key="play_random">PLAY RANDOM</span>
+                </button>
+                <button onclick="createBattle()" class="w-full btn-secondary rounded-2xl py-4 font-bold text-lg flex items-center justify-center gap-3">
+                    <iconify-icon icon="lucide:swords" width="20"></iconify-icon> <span data-key="create_battle">CREATE BATTLE</span>
+                </button>
+                <div id="game-link-area" class="hidden glass p-4 rounded-xl text-center">
+                    <p class="text-xs mb-2 text-cyan-400" data-key="share_link_label">Send this link to friend:</p>
+                    <label for="share-link-input"></label>
+                    <input id="share-link-input" readonly class="w-full bg-black/50 text-xs p-2 rounded mb-2 border border-cyan-500/30">
+                    <button onclick="copyGameLink()" class="btn-secondary px-4 py-1 rounded text-xs" data-key="share_link_copy">COPY</button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="showScreen('screen-shop')" class="w-full btn-secondary rounded-2xl py-4 font-bold flex items-center justify-center gap-3">
+                        <iconify-icon icon="lucide:shopping-bag" width="18"></iconify-icon> <span data-key="shop">SHOP</span>
+                    </button>
+                    <button onclick="openLeaderboards()" class="w-full btn-secondary rounded-2xl py-4 font-bold flex items-center justify-center gap-3">
+                        <iconify-icon icon="lucide:trophy" width="18"></iconify-icon> <span data-key="lb_title">LEADERBOARDS</span>
+                    </button>
+                </div>
+            </div>
+
+            <button id="admin-btn" onclick="showScreen('screen-admin')" class="hidden w-full mt-4 border border-red-500/50 text-red-400 py-2 rounded-xl text-xs" data-key="admin_panel_button">ADMIN PANEL</button>
+        </div>
+    </div>
+
+    <!-- 3.5 MATCHMAKING SCREEN -->
+    <div id="screen-matchmaking" class="screen">
+        <div class="flex flex-col items-center justify-center min-h-screen p-6">
+            <div class="glass rounded-3xl p-8 w-full max-w-md text-center space-y-4">
+                <h2 class="text-2xl font-bold text-cyan-400" data-key="matchmaking_search_title">Searching for opponent...</h2>
+                <p class="text-xs text-gray-300" data-key="matchmaking_search_sub">We will find a fair enemy or start a bot battle.</p>
+                <div class="text-5xl font-black text-white" id="matchmaking-timer">10</div>
+                <button onclick="cancelMatchmaking()" class="w-full btn-secondary rounded-xl py-3 text-sm font-bold" data-key="matchmaking_cancel">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. PLACEMENT SCREEN -->
+    <div id="screen-placement" class="screen">
+        <div class="p-4 min-h-screen flex flex-col">
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back self-start mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-cyan-400" data-key="deploy_fleet">Deploy Fleet</h2>
+                <button onclick="rotateShip()" class="glass p-2 rounded text-cyan-400"><iconify-icon icon="lucide:rotate-cw"></iconify-icon></button>
+            </div>
+
+            <div class="glass rounded-2xl p-2 mb-4">
+                <div id="placement-grid" class="ship-grid"></div>
+            </div>
+
+            <div class="glass rounded-xl p-4 mb-4">
+                <p class="text-sm mb-2" data-key="select_ship">Select Ship:</p>
+                <div class="flex gap-2 justify-center" id="ship-selector"></div>
+            </div>
+
+            <button id="btn-ready" disabled onclick="confirmPlacement()" class="mt-auto w-full btn-primary rounded-xl py-4 font-bold text-black opacity-50 transition" data-key="ready">READY</button>
+        </div>
+    </div>
+
+    <!-- 5. BATTLE SCREEN -->
+    <div id="screen-battle" class="screen">
+        <div class="p-4 min-h-screen flex flex-col">
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back self-start mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
+            <div class="flex justify-between items-center mb-4 glass p-2 rounded-xl">
+                <div class="text-center w-1/3">
+                    <div class="text-xs text-gray-400" data-key="battle_you">YOU</div>
+                    <div class="font-bold text-cyan-400" id="my-status" data-key="battle_alive">ALIVE</div>
+                </div>
+                <div class="text-center w-1/3 text-2xl font-bold text-white" id="battle-timer">10</div>
+                <div class="text-center w-1/3">
+                    <div class="text-xs text-gray-400" data-key="battle_enemy">ENEMY</div>
+                    <div class="font-bold text-pink-400" id="enemy-status" data-key="battle_alive">ALIVE</div>
+                </div>
+            </div>
+
+            <div class="text-center mb-2 text-sm font-bold" id="turn-indicator" data-key="battle_waiting">WAITING...</div>
+
+            <div class="glass rounded-2xl p-2 mb-4 relative">
+                <div class="absolute -top-3 left-2 text-xs bg-black px-2 text-pink-500" data-key="battle_enemy_waters">ENEMY WATERS</div>
+                <div id="enemy-grid" class="ship-grid"></div>
+            </div>
+
+            <div class="glass rounded-2xl p-2 mt-auto relative opacity-80 scale-90">
+                <div class="absolute -top-3 left-2 text-xs bg-black px-2 text-cyan-500" data-key="battle_your_fleet">YOUR FLEET</div>
+                <div id="my-grid" class="ship-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. ADMIN SCREEN -->
+    <div id="screen-admin" class="screen">
+        <div class="p-4">
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-red-400" data-key="admin_title">ADMIN</h2>
+            </div>
+            <div class="space-y-4">
+                <div class="flex gap-2 mb-2">
+                    <button id="admin-tab-overview" class="flex-1 glass p-2 rounded text-xs" data-key="admin_tab_overview">Overview</button>
+                    <button id="admin-tab-matches" class="flex-1 glass p-2 rounded text-xs" data-key="admin_tab_matches">Matches</button>
+                    <button id="admin-tab-bans" class="flex-1 glass p-2 rounded text-xs" data-key="admin_tab_bans">Bans</button>
+                    <button id="admin-tab-logs" class="flex-1 glass p-2 rounded text-xs" data-key="admin_tab_logs">Logs</button>
+                </div>
+
+                <!-- Overview -->
+                <div id="admin-panel-overview" class="space-y-3">
+                    <div class="glass p-4 rounded-xl">
+                        <p><span data-key="admin_active_games">Active Games</span>: <span id="admin-active-games" class="font-bold">0</span></p>
+                        <p><span data-key="admin_total_games">Total Games</span>: <span id="admin-total-games" class="font-bold">0</span></p>
+                        <p><span data-key="admin_human_wins">Human Wins</span>: <span id="admin-human-wins" class="font-bold">0</span></p>
+                        <p><span data-key="admin_bot_wins">Bot Wins</span>: <span id="admin-bot-wins" class="font-bold">0</span></p>
+                    </div>
+                    <div class="glass p-4 rounded-xl">
+                        <h3 class="font-bold mb-2 text-sm" data-key="admin_activity_title">Activity (last 24h)</h3>
+                        <ul id="admin-activity-list" class="text-xs space-y-1 max-h-40 overflow-y-auto"></ul>
+                    </div>
+                    <div class="glass p-4 rounded-xl">
+                        <label for="admin-user-id"></label>
+                        <input id="admin-user-id" data-key="admin_user_id_placeholder" placeholder="User ID" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
+                        <label for="admin-amount"></label>
+                        <input id="admin-amount" type="number" data-key="admin_amount_placeholder" placeholder="Amount" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
+                        <div class="flex gap-2 mb-2">
+                            <button onclick="adminAddCurrency('coins')" class="flex-1 btn-secondary p-2 rounded" data-key="admin_add_coins">Add Coins</button>
+                            <button onclick="adminAddCurrency('gems')" class="flex-1 btn-secondary p-2 rounded" data-key="admin_add_gems">Add Gems</button>
+                        </div>
+                        <button onclick="adminViewProfile()" class="w-full btn-primary p-2 rounded text-xs" data-key="admin_view_profile">View Profile</button>
+                    </div>
+                    <div id="admin-user-profile" class="glass p-4 rounded-xl text-xs space-y-2 max-h-64 overflow-y-auto hidden"></div>
+                </div>
+
+                <!-- Matches -->
+                <div id="admin-panel-matches" class="hidden space-y-3">
+                    <div class="glass p-4 rounded-xl">
+                        <h3 class="font-bold mb-2 text-sm" data-key="admin_recent_matches">Recent Matches</h3>
+                        <ul id="admin-matches-list" class="text-xs space-y-1 max-h-64 overflow-y-auto"></ul>
+                    </div>
+                </div>
+
+                <!-- Bans -->
+                <div id="admin-panel-bans" class="hidden space-y-3">
+                    <div class="glass p-4 rounded-xl">
+                        <h3 class="font-bold mb-2 text-sm" data-key="admin_tab_bans">Bans</h3>
+                        <ul id="admin-bans-list" class="text-xs space-y-2 max-h-64 overflow-y-auto"></ul>
+                    </div>
+                    <div class="glass p-4 rounded-xl">
+                        <label for="admin-ban-uid"></label>
+                        <input id="admin-ban-uid" data-key="admin_user_id_placeholder" placeholder="User ID" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
+                        <label for="admin-ban-reason"></label>
+                        <input id="admin-ban-reason" data-key="admin_ban_reason" placeholder="Reason" class="bg-black/50 border border-white/20 p-2 rounded w-full mb-2">
+                        <button onclick="adminBanUser()" class="w-full btn-secondary p-2 rounded text-xs" data-key="admin_ban">BAN</button>
+                    </div>
+                </div>
+
+                <!-- Logs -->
+                <div id="admin-panel-logs" class="hidden space-y-3">
+                    <div class="glass p-4 rounded-xl">
+                        <h3 class="font-bold mb-2 text-sm" data-key="admin_logs_title">Admin Logs</h3>
+                        <ul id="admin-logs-list" class="text-xs space-y-1 max-h-64 overflow-y-auto"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. SHOP & SETTINGS -->
+    <div id="screen-shop" class="screen">
+        <div class="p-4">
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
+            <h1 class="text-2xl font-bold mb-4 text-yellow-400" data-key="shop_title">TACTICAL ABILITIES</h1>
+
+            <div class="space-y-3">
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_scout_title">SCOUT</div>
+                        <div class="text-xs text-gray-300" data-key="ability_scout_desc">Open 1 cell</div>
+                    </div>
+                    <button onclick="buyAbility('scout')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_scout_price">40 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_sonar_title">SONAR</div>
+                        <div class="text-xs text-gray-300" data-key="ability_sonar_desc">Scan 3x3 area</div>
+                    </div>
+                    <button onclick="buyAbility('sonar')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_sonar_price">60 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_doubleShot_title">DOUBLE SHOT</div>
+                        <div class="text-xs text-gray-300" data-key="ability_doubleShot_desc">Two shots in a row</div>
+                    </div>
+                    <button onclick="buyAbility('doubleShot')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_doubleShot_price">75 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_decoy_title">DECOY</div>
+                        <div class="text-xs text-gray-300" data-key="ability_decoy_desc">Next enemy shot misses</div>
+                    </div>
+                    <button onclick="buyAbility('decoy')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_decoy_price">50 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_radar_title">RADAR</div>
+                        <div class="text-xs text-gray-300" data-key="ability_radar_desc">Block repeated cells</div>
+                    </div>
+                    <button onclick="buyAbility('radar')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_radar_price">70 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_overheat_title">OVERHEAT</div>
+                        <div class="text-xs text-gray-300" data-key="ability_overheat_desc">Enemy skips a turn</div>
+                    </div>
+                    <button onclick="buyAbility('overheat')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_overheat_price">120 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_fog_title">FOG</div>
+                        <div class="text-xs text-gray-300" data-key="ability_fog_desc">Hide part of field</div>
+                    </div>
+                    <button onclick="buyAbility('fog')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_fog_price">80 coins</button>
+                </div>
+
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <div>
+                        <div class="font-bold text-cyan-300 text-sm" data-key="ability_counterStrike_title">COUNTER STRIKE</div>
+                        <div class="text-xs text-gray-300" data-key="ability_counterStrike_desc">Return shot on hit</div>
+                    </div>
+                    <button onclick="buyAbility('counterStrike')" class="btn-primary px-3 py-2 rounded text-xs" data-key="ability_counterStrike_price">95 coins</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. LEADERBOARDS -->
+    <div id="screen-leaderboards" class="screen">
+        <div class="p-4">
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
+            <h1 class="text-2xl font-bold mb-4 text-yellow-400" data-key="lb_title">LEADERBOARDS</h1>
+            <div class="flex gap-2 mb-3">
+                <button id="lb-tab-rating" class="flex-1 glass p-2 rounded text-xs">Rating</button>
+                <button id="lb-tab-winrate" class="flex-1 glass p-2 rounded text-xs">Winrate 30+</button>
+                <button id="lb-tab-games" class="flex-1 glass p-2 rounded text-xs">Games</button>
+            </div>
+            <div id="lb-panel-rating" class="glass p-3 rounded-xl mb-3 max-h-80 overflow-y-auto text-xs">
+                <ul id="lb-rating-list" class="space-y-1"></ul>
+            </div>
+            <div id="lb-panel-winrate" class="glass p-3 rounded-xl mb-3 max-h-80 overflow-y-auto text-xs hidden">
+                <ul id="lb-winrate-list" class="space-y-1"></ul>
+            </div>
+            <div id="lb-panel-games" class="glass p-3 rounded-xl mb-3 max-h-80 overflow-y-auto text-xs hidden">
+                <ul id="lb-games-list" class="space-y-1"></ul>
+            </div>
+        </div>
+    </div>
+    <div id="screen-settings" class="screen">
+        <div class="p-4">
+            <button type="button" onclick="showScreen('screen-dashboard')" class="btn-back mb-4 text-cyan-400 text-sm font-medium">← <span data-key="back">Back</span></button>
+            <h1 class="text-2xl font-bold mb-6" data-key="settings_title">SETTINGS</h1>
+            <button onclick="setLanguage('en')" class="w-full glass p-4 mb-2 text-left">🇬🇧 <span data-key="settings_lang_en">English</span></button>
+            <button onclick="setLanguage('ru')" class="w-full glass p-4 mb-2 text-left">🇷🇺 <span data-key="settings_lang_ru">Русский</span></button>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+    <script>
+        (function() {
+            setTimeout(function() {
+                if (typeof window.showScreen !== 'function') {
+                    window.showScreen = function(id) {
+                        document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+                        var el = document.getElementById(id && id.indexOf('screen-') === 0 ? id : 'screen-' + id);
+                        if (el) el.classList.add('active');
+                    };
+                }
+                if (typeof window.createBattle !== 'function') {
+                    window.createBattle = function() { alert('App is loading... Reload the page.'); };
+                }
+                if (typeof window.setLanguage !== 'function') {
+                    window.setLanguage = function() { alert('App is loading... Reload the page.'); };
+                }
+            }, 2000);
+        })();
+    </script>
+</body>
+</html>
+</file>
+
+<file path="js/auth.js">
+/**
+ * Регистрация и проверка пользователя.
+ * Используем Firebase Anonymous Auth + Telegram ID как внешнюю идентификацию.
+ */
+
+import { state } from './state.js';
+import { ADMIN_IDS, ECONOMY, TEXTS } from './config.js';
+import { getUser, setUser, createUser, initFirebase } from './database.js';
+import { showScreen, updateDash, showToast } from './ui.js';
+
+let tg = null;
+
+export function getTg() {
+    if (!tg) tg = window.Telegram?.WebApp;
+    return tg;
+}
+
+async function ensureAnonAuth() {
+    initFirebase();
+    const auth = firebase.auth();
+    if (!auth.currentUser) {
+        await auth.signInAnonymously();
+    }
+    return auth.currentUser;
+}
+
+function applyUserToState(userData, uid) {
+    state.user = {
+        uid,
+        telegramId: userData.telegramId || null,
+        nickname: userData.nickname || 'Player',
+        rating: userData.rating ?? ECONOMY.START_RATING,
+        coins: userData.coins ?? ECONOMY.START_COINS,
+        wins: userData.wins ?? 0,
+        losses: userData.losses ?? 0,
+        games: userData.games ?? 0,
+        banned: !!userData.banned,
+        abilities: userData.abilities || {},
+        language: userData.language || state.lang
+    };
+    if (userData.language) state.lang = userData.language;
+
+    const tgid = state.user.telegramId;
+    if (tgid && ADMIN_IDS.includes(Number(tgid))) {
+        const el = document.getElementById('admin-btn');
+        if (el) el.classList.remove('hidden');
+    }
+
+    localStorage.setItem('uid', String(uid));
+    updateDash();
+    showScreen('screen-dashboard');
+}
+
+/**
+ * При загрузке: анонимный Firebase Auth, затем поиск пользователя по uid.
+ */
+export async function tryAutoLogin() {
+    tg = getTg();
+    if (tg) {
+        tg.ready();
+        tg.expand();
+        tg.setHeaderColor('#0a0a14');
+    }
+
+    const authUser = await ensureAnonAuth();
+    const uid = authUser.uid;
+
+    try {
+        const userData = await getUser(uid);
+        if (userData && userData.nickname) {
+            applyUserToState(userData, uid);
+            return true;
+        }
+    } catch (e) {
+        console.warn('Auto-login failed:', e);
+    }
+
+    return false;
+}
+
+/**
+ * Регистрация/обновление пользователя по нику и переход в лобби или в игру по ссылке.
+ */
+export async function registerUser() {
+    const nicknameInput = document.getElementById('input-nickname');
+    const nickname = (nicknameInput && nicknameInput.value.trim()) || 'Player';
+    tg = getTg();
+    const telegramId = tg?.initDataUnsafe?.user?.id ?? null;
+
+    const authUser = await ensureAnonAuth();
+    const uid = authUser.uid;
+
+    const baseUser = {
+        telegramId,
+        nickname,
+        language: state.lang
+    };
+
+    try {
+        const existing = await getUser(uid);
+        if (existing) {
+            await setUser(uid, { ...baseUser, lastActive: Date.now() });
+            applyUserToState({ ...existing, ...baseUser }, uid);
+        } else {
+            await createUser(uid, baseUser);
+            applyUserToState(
+                {
+                    ...baseUser,
+                    rating: ECONOMY.START_RATING,
+                    coins: ECONOMY.START_COINS,
+                    wins: 0,
+                    losses: 0,
+                    games: 0,
+                    banned: false,
+                    abilities: {},
+                    achievements: {}
+                },
+                uid
+            );
+        }
+    } catch (e) {
+        console.error('Failed to save user:', e);
+        const msg = TEXTS[state.lang]?.error_save_user || TEXTS.en.error_save_user;
+        showToast(msg, 'error');
+        return;
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const joinGameId = urlParams.get('startapp');
+    if (joinGameId) {
+        const { joinGame } = await import('./game.js');
+        await joinGame(joinGameId);
+    } else {
+        showScreen('screen-dashboard');
+    }
+}
+
+export function bindRegisterButton() {
+    const btn = document.getElementById('btn-register');
+    if (btn) btn.addEventListener('click', () => registerUser());
+}
+</file>
+
+<file path="js/config.js">
+/**
+ * Конфигурация Firebase и константы приложения.
+ * Здесь описывается экономика, способности, погода и локализация.
+ */
+
+// В продакшене ADMIN_IDS лучше прокидывать из back-end / env,
+// но для Mini App читаем их статически. Значения должны совпадать с Telegram ID.
+export const ADMIN_IDS = [6250975346];
+
+export const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBzu_EqbYoHR9AGRjNTjlCX2f4seIMgpwk",
+    authDomain: "test-game-bf099.firebaseapp.com",
+    databaseURL: "https://test-game-bf099-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "test-game-bf099",
+    storageBucket: "test-game-bf099.firebasestorage.app",
+    messagingSenderId: "624705252854",
+    appId: "1:624705252854:web:f24eb7255da54c47902bd7",
+    measurementId: "G-TVDRXT9CHV"
+};
+
+// Игровое поле
+export const GRID_SIZE = 10;
+export const SHIP_SIZES = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1];
+
+// Экономика и рейтинг
+export const ECONOMY = {
+    START_RATING: 1000,
+    START_COINS: 50,
+    RANKED_WIN_RATING_DELTA: 25,
+    RANKED_LOSS_RATING_DELTA: -25,
+    MIN_RATING_FOR_RANKED: 25, // Минимальный рейтинг для создания ranked-игры
+    MIN_RATING: 25,
+    RANKED_WIN_COINS: 50,
+    RANKED_LOSS_COINS: 25
+};
+
+// Способности и их стоимость (монеты)
+export const ABILITIES = {
+    scout:       { id: 'scout',       cost: 40 },
+    sonar:       { id: 'sonar',       cost: 60 },
+    doubleShot:  { id: 'doubleShot',  cost: 75 },
+    decoy:       { id: 'decoy',       cost: 50 },
+    radar:       { id: 'radar',       cost: 70 },
+    overheat:    { id: 'overheat',    cost: 120 },
+    fog:         { id: 'fog',         cost: 80 },
+    counterStrike: { id: 'counterStrike', cost: 95 }
+};
+
+export const WEATHER_TYPES = ['calm', 'storm', 'night'];
+
+export const TEXTS = {
+    en: {
+        app_title: "NAVAL WARFARE",
+        lang_en: "English",
+        lang_ru: "Russian",
+        welcome: "Welcome, Commander",
+        deploy: "DEPLOY",
+        create_battle: "CREATE BATTLE (FRIEND)",
+        play_random: "RANKED RANDOM",
+        shop: "SHOP",
+        dashboard_command: "COMMAND",
+        stats_coins: "Coins",
+        stats_wins: "Wins",
+        stats_winrate: "WinRate",
+        share_link_label: "Send this link to friend:",
+        share_link_copy: "COPY",
+        deploy_fleet: "Deploy Fleet",
+        select_ship: "Select Ship:",
+        ready: "READY FOR BATTLE",
+        waiting: "Waiting for opponent...",
+        your_turn: "YOUR TURN",
+        enemy_turn: "ENEMY TURN",
+        nick_placeholder: "Nickname...",
+        back: "Back",
+        opponent_left: "Opponent left the game",
+        battle_you: "YOU",
+        battle_enemy: "ENEMY",
+        battle_alive: "ALIVE",
+        battle_waiting: "WAITING...",
+        battle_enemy_waters: "ENEMY WATERS",
+        battle_your_fleet: "YOUR FLEET",
+        admin_panel_button: "ADMIN PANEL",
+        admin_title: "ADMIN",
+        admin_active_games: "Active Games",
+        admin_user_id_placeholder: "User ID",
+        admin_amount_placeholder: "Amount",
+        admin_add_coins: "Add Coins",
+        admin_add_gems: "Add Gems",
+        admin_tab_overview: "Overview",
+        admin_tab_matches: "Matches",
+        admin_tab_bans: "Bans",
+        admin_tab_logs: "Logs",
+        admin_ban: "BAN",
+        admin_unban: "UNBAN",
+        admin_ban_reason: "Reason",
+        admin_total_games: "Total Games",
+        admin_human_wins: "Human Wins",
+        admin_bot_wins: "Bot Wins",
+        admin_activity_title: "Activity (last 24h)",
+        admin_recent_matches: "Recent Matches",
+        admin_logs_title: "Admin Logs",
+        admin_view_profile: "View Profile",
+        admin_matches: "matches",
+        admin_no_reason: "no reason",
+        shop_title: "TACTICAL ABILITIES",
+        ability_scout_title: "SCOUT",
+        ability_scout_desc: "Open 1 cell",
+        ability_scout_price: "40 coins",
+        ability_sonar_title: "SONAR",
+        ability_sonar_desc: "Scan 3x3 area",
+        ability_sonar_price: "60 coins",
+        ability_doubleShot_title: "DOUBLE SHOT",
+        ability_doubleShot_desc: "Two shots in a row",
+        ability_doubleShot_price: "75 coins",
+        ability_decoy_title: "DECOY",
+        ability_decoy_desc: "Next enemy shot misses",
+        ability_decoy_price: "50 coins",
+        ability_radar_title: "RADAR",
+        ability_radar_desc: "Block repeated cells",
+        ability_radar_price: "70 coins",
+        ability_overheat_title: "OVERHEAT",
+        ability_overheat_desc: "Enemy skips a turn",
+        ability_overheat_price: "120 coins",
+        ability_fog_title: "FOG",
+        ability_fog_desc: "Hide part of field",
+        ability_fog_price: "80 coins",
+        ability_counterStrike_title: "COUNTER STRIKE",
+        ability_counterStrike_desc: "Return shot on hit",
+        ability_counterStrike_price: "95 coins",
+        settings_title: "SETTINGS",
+        settings_lang_en: "English",
+        settings_lang_ru: "Russian",
+        error_save_user: "Save failed. Check connection and reopen the app.",
+        error_create_battle: "Failed to create battle. Check your connection.",
+        error_matchmaking: "Matchmaking failed. Try again.",
+        match_finished: "Match finished",
+        admin_done: "Done!",
+        shop_purchased: "Purchased",
+        shop_purchase_failed: "Purchase failed",
+        matchmaking_search_title: "Searching for opponent...",
+        matchmaking_search_sub: "We will find a fair enemy or start a bot battle.",
+        matchmaking_cancel: "CANCEL",
+        matchmaking_vs_bot_easy: "You will fight bot (easy).",
+        matchmaking_vs_bot_normal: "You will fight bot (normal).",
+        matchmaking_vs_bot_hard: "You will fight bot (hard).",
+        lb_title: "LEADERBOARDS",
+        lb_tab_rating: "Rating",
+        lb_tab_winrate: "Winrate 30+",
+        lb_tab_games: "Games",
+        onboarding_slide1_title: "FLEET PLACEMENT",
+        onboarding_slide1_text: "Place your ships on the board. Tap a ship to rotate it. When all ships are placed, press \"READY\".",
+        onboarding_slide2_title: "TACTICAL ABILITIES",
+        onboarding_slide2_text: "Buy abilities in the shop for coins. Use them in battle for advantages: scout, double shot, fog, and more.",
+        onboarding_slide3_title: "RATING & ECONOMY",
+        onboarding_slide3_text: "Win matches to increase rating and earn coins. Lose to decrease rating. Higher rating means stronger opponents.",
+        onboarding_next: "NEXT",
+        onboarding_skip: "SKIP",
+        onboarding_start: "START",
+        error_low_rating: "Your rating is too low for ranked matches. Minimum rating: 25",
+        error_low_rating_title: "Rating Too Low"
+    },
+    ru: {
+        app_title: "МОРСКОЙ БОЙ",
+        lang_en: "Английский",
+        lang_ru: "Русский",
+        welcome: "Добро пожаловать",
+        deploy: "В БОЙ",
+        create_battle: "БИТВА С ДРУГОМ",
+        play_random: "РЕЙТИНГОВЫЙ РАНДОМ",
+        shop: "МАГАЗИН",
+        dashboard_command: "КОМАНДОВАНИЕ",
+        stats_coins: "Монеты",
+        stats_wins: "Победы",
+        stats_winrate: "Винрейт",
+        share_link_label: "Отправьте эту ссылку другу:",
+        share_link_copy: "СКОПИРОВАТЬ",
+        deploy_fleet: "Расстановка",
+        select_ship: "Выберите корабль:",
+        ready: "К БОЮ",
+        waiting: "Ждем противника...",
+        your_turn: "ВАШ ХОД",
+        enemy_turn: "ХОД ВРАГА",
+        nick_placeholder: "Ник...",
+        back: "Назад",
+        opponent_left: "Противник вышел из игры",
+        battle_you: "ВЫ",
+        battle_enemy: "ВРАГ",
+        battle_alive: "В СТРОЮ",
+        battle_waiting: "ОЖИДАНИЕ...",
+        battle_enemy_waters: "ВОДЫ ПРОТИВНИКА",
+        battle_your_fleet: "ВАШ ФЛОТ",
+        admin_panel_button: "АДМИН-ПАНЕЛЬ",
+        admin_title: "АДМИН",
+        admin_active_games: "Активные игры",
+        admin_user_id_placeholder: "ID игрока",
+        admin_amount_placeholder: "Сумма",
+        admin_add_coins: "Добавить монеты",
+        admin_add_gems: "Добавить гемы",
+        admin_tab_overview: "Обзор",
+        admin_tab_matches: "Матчи",
+        admin_tab_bans: "Баны",
+        admin_tab_logs: "Логи",
+        admin_ban: "ЗАБАНИТЬ",
+        admin_unban: "РАЗБАНИТЬ",
+        admin_ban_reason: "Причина",
+        admin_total_games: "Всего игр",
+        admin_human_wins: "Побед игроков",
+        admin_bot_wins: "Побед бота",
+        admin_activity_title: "Активность (последние 24ч)",
+        admin_recent_matches: "Последние матчи",
+        admin_logs_title: "Логи админа",
+        admin_view_profile: "Просмотр профиля",
+        admin_matches: "матчей",
+        admin_no_reason: "без причины",
+        shop_title: "ТАКТИЧЕСКИЕ СПОСОБНОСТИ",
+        ability_scout_title: "РАЗВЕДКА",
+        ability_scout_desc: "Открыть 1 клетку",
+        ability_scout_price: "40 монет",
+        ability_sonar_title: "СОНАР",
+        ability_sonar_desc: "Проверить зону 3x3",
+        ability_sonar_price: "60 монет",
+        ability_doubleShot_title: "ДВОЙНОЙ ВЫСТРЕЛ",
+        ability_doubleShot_desc: "Два выстрела подряд",
+        ability_doubleShot_price: "75 монет",
+        ability_decoy_title: "ЛОЖНАЯ ЦЕЛЬ",
+        ability_decoy_desc: "Следующий выстрел врага — мимо",
+        ability_decoy_price: "50 монет",
+        ability_radar_title: "РАДАР",
+        ability_radar_desc: "Запрет повторных клеток",
+        ability_radar_price: "70 монет",
+        ability_overheat_title: "ПЕРЕГРЕВ",
+        ability_overheat_desc: "Враг пропускает ход",
+        ability_overheat_price: "120 монет",
+        ability_fog_title: "ТУМАН",
+        ability_fog_desc: "Скрыть часть поля",
+        ability_fog_price: "80 монет",
+        ability_counterStrike_title: "КОНТР-УДАР",
+        ability_counterStrike_desc: "Ответный выстрел при попадании",
+        ability_counterStrike_price: "95 монет",
+        settings_title: "НАСТРОЙКИ",
+        settings_lang_en: "Английский",
+        settings_lang_ru: "Русский",
+        error_save_user: "Ошибка сохранения. Проверьте интернет и откройте приложение снова.",
+        error_create_battle: "Ошибка создания боя. Проверьте интернет.",
+        error_matchmaking: "Ошибка матчмейкинга. Попробуйте позже.",
+        match_finished: "Матч завершён",
+        admin_done: "Готово!",
+        shop_purchased: "Приобретено",
+        shop_purchase_failed: "Ошибка покупки",
+        matchmaking_search_title: "Ищем соперника...",
+        matchmaking_search_sub: "Найдём честного врага или запустим бой с ботом.",
+        matchmaking_cancel: "ОТМЕНА",
+        matchmaking_vs_bot_easy: "Вы сражаетесь против бота (легко).",
+        matchmaking_vs_bot_normal: "Вы сражаетесь против бота (нормально).",
+        matchmaking_vs_bot_hard: "Вы сражаетесь против бота (сложно).",
+        lb_title: "ТАБЛИЦЫ ЛИДЕРОВ",
+        lb_tab_rating: "Рейтинг",
+        lb_tab_winrate: "Винрейт 30+",
+        lb_tab_games: "Игры",
+        onboarding_slide1_title: "РАССТАНОВКА ФЛОТА",
+        onboarding_slide1_text: "Расставьте свои корабли на поле. Нажмите на корабль, чтобы повернуть его. Когда все корабли расставлены, нажмите «К БОЮ».",
+        onboarding_slide2_title: "ТАКТИЧЕСКИЕ СПОСОБНОСТИ",
+        onboarding_slide2_text: "Покупайте способности в магазине за монеты. Используйте их в бою для получения преимущества: разведка, двойной выстрел, туман и другие.",
+        onboarding_slide3_title: "РЕЙТИНГ И ЭКОНОМИКА",
+        onboarding_slide3_text: "Выигрывайте матчи, чтобы повысить рейтинг и заработать монеты. Проигрывайте — теряйте рейтинг. Чем выше рейтинг, тем сильнее соперники.",
+        onboarding_next: "ДАЛЕЕ",
+        onboarding_skip: "ПРОПУСТИТЬ",
+        onboarding_start: "НАЧАТЬ",
+        error_low_rating: "Ваш рейтинг слишком низкий для рейтинговых матчей. Минимальный рейтинг: 25",
+        error_low_rating_title: "Рейтинг слишком низкий"
+    }
+};
+</file>
+
+<file path="js/database.js">
+/**
+ * Все операции чтения/записи Firebase Realtime Database.
+ * Здесь же инициализируем Firebase (app + db), чтобы им могла пользоваться и Auth.
+ */
+
+import { FIREBASE_CONFIG, ECONOMY, ABILITIES } from './config.js';
+
+let db = null;
+let appInitialized = false;
+
+export function initFirebase() {
+    if (!appInitialized) {
+        try {
+            if (typeof firebase === 'undefined') throw new Error('Firebase SDK not loaded');
+            firebase.initializeApp(FIREBASE_CONFIG);
+            db = firebase.database();
+            appInitialized = true;
+        } catch (e) {
+            console.error('Firebase init error:', e);
+            throw e;
+        }
+    }
+    return db;
+}
+
+export function getDb() {
+    if (!db) {
+        initFirebase();
+    }
+    return db;
+}
+
+// ——— Users ———
+
+/** Прочитать пользователя по uid (auth.uid). */
+export async function getUser(userId) {
+    const snap = await getDb().ref('users/' + userId).once('value');
+    return snap.val();
+}
+
+/**
+ * Частичное обновление пользователя.
+ */
+export function setUser(userId, data) {
+    return getDb().ref('users/' + userId).update(data);
+}
+
+/**
+ * Создать нового пользователя с начальными значениями экономики и профиля.
+ */
+export function createUser(uid, { telegramId, nickname, language }) {
+    const now = Date.now();
+    const base = {
+        telegramId: telegramId ?? null,
+        nickname: nickname || 'Player',
+        language: language || 'en',
+        rating: ECONOMY.START_RATING,
+        coins: ECONOMY.START_COINS,
+        wins: 0,
+        losses: 0,
+        games: 0,
+        banned: false,
+        createdAt: now,
+        lastActive: now,
+        abilities: {},
+        achievements: {}
+    };
+    return getDb().ref('users/' + uid).set(base);
+}
+
+// ——— Games ———
+export function setGame(gameId, data) {
+    return getDb().ref('games/' + gameId).set(data);
+}
+
+export function updateGame(gameId, data) {
+    return getDb().ref('games/' + gameId).update(data);
+}
+
+export async function getGame(gameId) {
+    const snap = await getDb().ref('games/' + gameId).once('value');
+    return snap.val();
+}
+
+export function onGame(gameId, callback) {
+    return getDb().ref('games/' + gameId).on('value', snap => callback(snap.val()));
+}
+
+export function offGame(gameId) {
+    getDb().ref('games/' + gameId).off('value');
+}
+
+export function setPlayerData(gameId, userId, data) {
+    return getDb().ref('games/' + gameId + '/players/' + userId).set(data);
+}
+
+export async function getPlayerData(gameId, userId) {
+    const snap = await getDb().ref('games/' + gameId + '/players/' + userId).once('value');
+    return snap.val();
+}
+
+export function onPlayers(gameId, callback) {
+    return getDb().ref('games/' + gameId + '/players').on('value', snap => callback(snap.val()));
+}
+
+export function offPlayers(gameId) {
+    getDb().ref('games/' + gameId + '/players').off('value');
+}
+
+/**
+ * Транзакция выстрела в PvP:
+ * - только текущий ход может стрелять
+ * - считаем попадание на сервере по boards/{opponentId}/ships
+ * - обновляем turn, lastShot, shots, hitsCount и при необходимости завершаем матч.
+ */
+export async function runShootTransaction(gameId, myUserId, opponentId, cellIdx) {
+    const gameRef = getDb().ref('games/' + gameId);
+    return gameRef.runTransaction(current => {
+        const game = current;
+        if (!game || game.turn !== myUserId) return; // не твой ход — отмена
+
+        const boards = game.boards || {};
+        const oppBoard = boards[opponentId];
+        if (!oppBoard) return;
+
+        const key = String(cellIdx);
+        const prevShots = oppBoard.shots || {};
+        if (prevShots[key]) return; // уже стреляли сюда — отмена
+
+        const isHit = !!(oppBoard.ships && oppBoard.ships[key]);
+        const prevHits = oppBoard.hitsCount || 0;
+        const totalShipCells = oppBoard.totalShipCells || 0;
+        const newHits = prevHits + (isHit ? 1 : 0);
+
+        const finished = totalShipCells > 0 && newHits >= totalShipCells;
+        const nextTurn = finished ? null : (isHit ? myUserId : opponentId);
+
+        const newOppBoard = {
+            ...oppBoard,
+            shots: { ...prevShots, [key]: true },
+            hitsCount: newHits
+        };
+
+        const newBoards = {
+            ...boards,
+            [opponentId]: newOppBoard
+        };
+
+        const updated = {
+            ...game,
+            boards: newBoards,
+            turn: nextTurn,
+            lastShot: { idx: cellIdx, isHit, shooter: myUserId },
+            lastShotAt: Date.now()
+        };
+
+        if (finished) {
+            updated.status = 'finished';
+            updated.finished = true;
+            updated.result = {
+                winner: myUserId,
+                loser: opponentId,
+                finishedAt: Date.now(),
+                botGame: false
+            };
+        }
+
+        return updated;
+    });
+}
+
+/** Отметить, что игрок отключился (для уведомления противника). */
+export function setPlayerDisconnected(gameId, userId) {
+    return getDb().ref('games/' + gameId + '/disconnected/' + userId).set(Date.now());
+}
+
+export function onDisconnected(gameId, callback) {
+    return getDb().ref('games/' + gameId + '/disconnected').on('value', snap => callback(snap.val()));
+}
+
+export function offDisconnected(gameId) {
+    getDb().ref('games/' + gameId + '/disconnected').off('value');
+}
+
+// ——— Matchmaking ———
+
+export function enterMatchmakingQueue(uid, rating) {
+    return getDb()
+        .ref('matchmakingQueue/' + uid)
+        .set({
+            rating: rating || ECONOMY.START_RATING,
+            timestamp: Date.now()
+        });
+}
+
+export function leaveMatchmakingQueue(uid) {
+    return getDb().ref('matchmakingQueue/' + uid).remove();
+}
+
+export async function getMatchmakingQueue() {
+    const snap = await getDb().ref('matchmakingQueue').once('value');
+    return snap.val() || {};
+}
+
+// ——— Stats / Leaderboards / Admin ———
+
+export function incrementGlobalStats(updates) {
+    // updates: { totalGamesDelta, humanWinsDelta, botWinsDelta }
+    const ref = getDb().ref('stats/global');
+    return ref.transaction(current => {
+        const cur = current || {};
+        return {
+            activeUsers: cur.activeUsers || 0,
+            peakOnline: cur.peakOnline || 0,
+            totalGames: (cur.totalGames || 0) + (updates.totalGamesDelta || 0),
+            humanWins: (cur.humanWins || 0) + (updates.humanWinsDelta || 0),
+            botWins: (cur.botWins || 0) + (updates.botWinsDelta || 0)
+        };
+    });
+}
+
+export async function getActiveGamesCount() {
+    const snap = await getDb().ref('games').orderByChild('status').once('value');
+    const val = snap.val();
+    if (!val) return 0;
+    return Object.values(val).filter(g => g.status && g.status !== 'finished').length;
+}
+
+export async function adminAddCoinsOrGems(userId, type, amount) {
+    const ref = getDb().ref('users/' + userId + '/' + type);
+    const snap = await ref.once('value');
+    const current = snap.val() || 0;
+    await ref.set(current + amount);
+}
+
+export function setBan(uid, reason, byAdminUid) {
+    const now = Date.now();
+    const updates = {};
+    updates['/bans/' + uid] = { reason, byAdmin: byAdminUid, timestamp: now };
+    updates['/users/' + uid + '/banned'] = true;
+    return getDb().ref().update(updates);
+}
+
+export function clearBan(uid) {
+    const updates = {};
+    updates['/bans/' + uid] = null;
+    updates['/users/' + uid + '/banned'] = false;
+    return getDb().ref().update(updates);
+}
+
+export function logAdminAction(adminUid, action, payload) {
+    const logRef = getDb().ref('adminLogs').push();
+    return logRef.set({
+        adminUid,
+        action,
+        payload: payload || null,
+        timestamp: Date.now()
+    });
+}
+
+/**
+ * Логирование клиентских ошибок для отладки в проде.
+ * @param {string} errorMessage - Сообщение об ошибке
+ * @param {string} source - Источник (файл:строка)
+ * @param {number} lineno - Номер строки
+ * @param {number} colno - Номер колонки
+ * @param {Error} error - Объект ошибки
+ * @param {string} uid - UID пользователя (опционально)
+ */
+export function logClientError(errorMessage, source, lineno, colno, error, uid = null) {
+    try {
+        const errorRef = getDb().ref('clientErrors').push();
+        return errorRef.set({
+            uid: uid || null,
+            message: errorMessage || 'Unknown error',
+            source: source || 'unknown',
+            lineno: lineno || null,
+            colno: colno || null,
+            stack: error?.stack || null,
+            userAgent: navigator.userAgent || null,
+            url: window.location.href || null,
+            timestamp: Date.now()
+        }).catch(err => {
+            // Если не удалось записать в Firebase, хотя бы логируем в консоль
+            console.error('Failed to log client error to Firebase:', err);
+        });
+    } catch (e) {
+        console.error('Error logging client error:', e);
+    }
+}
+
+export async function getTopByRating(limit = 50) {
+    const snap = await getDb()
+        .ref('users')
+        .orderByChild('rating')
+        .limitToLast(limit)
+        .once('value');
+    const val = snap.val() || {};
+    // Revert order: highest rating first
+    return Object.entries(val)
+        .map(([uid, u]) => ({ uid, ...u }))
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0));
+}
+
+export async function getGlobalStats() {
+    const snap = await getDb().ref('stats/global').once('value');
+    return snap.val() || {};
+}
+
+export async function getRecentActivity(limitHours = 24) {
+    const snap = await getDb().ref('stats/activity').once('value');
+    const val = snap.val() || {};
+    const entries = Object.entries(val).sort((a, b) => (a[0] > b[0] ? -1 : 1));
+    return entries.slice(0, limitHours).map(([bucket, data]) => ({ bucket, ...data }));
+}
+
+export async function getRecentMatches(limit = 20) {
+    const snap = await getDb().ref('matchHistory').once('value');
+    const val = snap.val() || {};
+    const entries = Object.entries(val).sort((a, b) => (b[1].finishedAt || 0) - (a[1].finishedAt || 0));
+    return entries.slice(0, limit).map(([gameId, data]) => ({ gameId, ...data }));
+}
+
+export async function getBans() {
+    const snap = await getDb().ref('bans').once('value');
+    const val = snap.val() || {};
+    return Object.entries(val).map(([uid, data]) => ({ uid, ...data }));
+}
+
+export async function getAdminLogs(limit = 50) {
+    const snap = await getDb().ref('adminLogs').limitToLast(limit).once('value');
+    const val = snap.val() || {};
+    return Object.entries(val)
+        .map(([id, log]) => ({ id, ...log }))
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+}
+
+export async function getMatchesForUser(uid, limit = 20) {
+    const snap = await getDb().ref('matchHistory').once('value');
+    const val = snap.val() || {};
+    const matches = [];
+    for (const [gameId, m] of Object.entries(val)) {
+        const players = m.players || {};
+        if (players.host === uid || players.guest === uid) {
+            matches.push({ gameId, ...m });
+        }
+    }
+    matches.sort((a, b) => (b.finishedAt || 0) - (a.finishedAt || 0));
+    return matches.slice(0, limit);
+}
+
+export async function getUsersForLeaderboards(limit = 200) {
+    const snap = await getDb().ref('users').once('value');
+    const val = snap.val() || {};
+    const users = Object.entries(val).map(([uid, u]) => ({ uid, ...u }));
+    // Можно ограничить сверху по количеству, чтобы не тянуть тысячи записей
+    users.sort((a, b) => (b.games || 0) - (a.games || 0));
+    return users.slice(0, limit);
+}
+</file>
+
+<file path="js/economyController.js">
+/**
+ * Контроллер экономики и магазина.
+ * Использует EconomyService (SOLID: отделяем доменную логику от UI).
+ */
+
+import { state } from './state.js';
+import { EconomyService } from './services.js';
+import { updateDash, showToast } from './ui.js';
+import { TEXTS } from './config.js';
+
+const economyService = new EconomyService();
+
+export function initShop() {
+    const coinsEl = document.getElementById('dash-coins');
+    if (coinsEl && state.user) {
+        coinsEl.textContent = state.user.coins;
+    }
+}
+
+export async function buyAbility(abilityId) {
+    if (!state.user) return;
+    try {
+        const result = await economyService.purchaseAbility(state.user.uid, abilityId);
+        state.user.coins = result.coins;
+        state.user.abilities = state.user.abilities || {};
+        state.user.abilities[abilityId] = result.count;
+        updateDash();
+        const base = TEXTS[state.lang] || TEXTS.en;
+        showToast(`${base.shop_purchased}: ${abilityId} x${result.count}`, 'success');
+    } catch (e) {
+        console.error('Purchase failed', e);
+        const base = TEXTS[state.lang] || TEXTS.en;
+        showToast(base.shop_purchase_failed, 'error');
+    }
+}
+
+</file>
+
+<file path="js/game.js">
+/**
+ * Логика расстановки кораблей и боя. Транзакции выстрелов, валидация расстановки, дисконнект.
+ */
+
+import { state, resetGameState } from './state.js';
+import { GRID_SIZE, SHIP_SIZES, TEXTS, WEATHER_TYPES, ECONOMY } from './config.js';
+import {
+    setGame,
+    updateGame,
+    getGame,
+    onGame,
+    offGame,
+    setPlayerData,
+    onPlayers,
+    offPlayers,
+    runShootTransaction,
+    setPlayerDisconnected,
+    onDisconnected,
+    offDisconnected,
+    getPlayerData
+} from './database.js';
+import { MatchmakingService, BotPlayer, MatchResultService, StatsService, AchievementsService } from './services.js';
+import {
+    showScreen,
+    renderPlacementGrid,
+    renderShipSelector,
+    renderBattleGrids,
+    updateGridVisuals,
+    setEnemyCellClass,
+    setTurnIndicator,
+    setBattleTimer,
+    showShake,
+    showOpponentLeftMessage
+} from './ui.js';
+import { getTg } from './auth.js';
+import { adminAddCoinsOrGems, getActiveGamesCount, getGlobalStats, getRecentActivity, getRecentMatches, getBans, getAdminLogs, getUser, getMatchesForUser, getTopByRating, getUsersForLeaderboards, setBan, clearBan, logAdminAction } from './database.js';
+
+// Сервисы (единые инстансы)
+const matchmakingService = new MatchmakingService();
+let botPlayer = new BotPlayer('normal');
+const matchResultService = new MatchResultService();
+const statsService = new StatsService();
+const achievementsService = new AchievementsService();
+
+const BOT_UID = 'bot';
+const TOTAL_SHIP_CELLS = SHIP_SIZES.reduce((a, b) => a + b, 0);
+
+function isBotGuest(guestVal) {
+    return typeof guestVal === 'string' && guestVal.startsWith('bot:');
+}
+
+function getBotDifficultyFromGuest(guestVal) {
+    if (!isBotGuest(guestVal)) return 'normal';
+    return String(guestVal).split(':')[1] || 'normal';
+}
+
+function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+}
+
+function randomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function generateRandomBoard() {
+    const grid = Array(GRID_SIZE * GRID_SIZE).fill(null);
+    for (const size of SHIP_SIZES) {
+        let placed = false;
+        for (let attempt = 0; attempt < 300 && !placed; attempt++) {
+            const orientation = Math.random() < 0.5 ? 'h' : 'v';
+            const row = randomInt(0, GRID_SIZE - 1);
+            const col = randomInt(0, GRID_SIZE - 1);
+            if (!canPlaceShip(grid, row, col, size, orientation)) continue;
+            for (let i = 0; i < size; i++) {
+                const r = orientation === 'h' ? row : row + i;
+                const c = orientation === 'h' ? col + i : col;
+                grid[r * GRID_SIZE + c] = 's';
+            }
+            placed = true;
+        }
+        if (!placed) {
+            // Фоллбек: если вдруг не получилось (маловероятно), перегенерим всё.
+            return generateRandomBoard();
+        }
+    }
+    return grid;
+}
+
+/** Можно ли поставить корабль длины size в (row, col) с ориентацией orientation. Классические правила: корабли не касаются углами/сторонами. */
+function canPlaceShip(grid, row, col, size, orientation) {
+    const cellsToOccupy = [];
+    for (let i = 0; i < size; i++) {
+        const r = orientation === 'h' ? row : row + i;
+        const c = orientation === 'h' ? col + i : col;
+        if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE) return false;
+        if (grid[r * GRID_SIZE + c]) return false;
+        cellsToOccupy.push(r * GRID_SIZE + c);
+    }
+    const occupySet = new Set(cellsToOccupy);
+    for (const idx of cellsToOccupy) {
+        const r = Math.floor(idx / GRID_SIZE);
+        const c = idx % GRID_SIZE;
+        for (let dr = -1; dr <= 1; dr++) {
+            for (let dc = -1; dc <= 1; dc++) {
+                const nr = r + dr;
+                const nc = c + dc;
+                if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
+                const nIdx = nr * GRID_SIZE + nc;
+                if (occupySet.has(nIdx)) continue;
+                if (grid[nIdx]) return false;
+            }
+        }
+    }
+    return true;
+}
+
+function resetTimer() {
+    if (state.timerInterval) clearInterval(state.timerInterval);
+    let time = 10;
+    setBattleTimer(time);
+    state.timerInterval = setInterval(() => {
+        time--;
+        setBattleTimer(time);
+        if (time <= 0) clearInterval(state.timerInterval);
+    }, 1000);
+}
+
+export function createBattle() {
+    // Текущая кнопка — "игра с другом" (friend).
+    return createGame('friend', false);
+}
+
+/**
+ * Создать игру. mode: friend | random, ranked: boolean.
+ */
+export async function createGame(mode = 'friend', ranked = false) {
+    if (!state.user) {
+        showScreen('screen-register');
+        return;
+    }
+    
+    // Проверка минимального рейтинга для ranked-игры
+    if (ranked) {
+        const userRating = state.user.rating || ECONOMY.START_RATING;
+        if (userRating < ECONOMY.MIN_RATING_FOR_RANKED) {
+            const msg = TEXTS[state.lang]?.error_low_rating || TEXTS.en.error_low_rating;
+            showToast(msg, 'error', 5000);
+            return;
+        }
+    }
+    
+    try {
+        resetGameState();
+        const gameId = 'game_' + Date.now();
+        state.gameId = gameId;
+        state.mode = mode;
+        state.ranked = ranked;
+        const weather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+        state.weather = weather;
+
+        await setGame(gameId, {
+            status: 'waiting',
+            mode,
+            ranked,
+            weather,
+            createdAt: Date.now(),
+            players: {
+                host: state.user.uid,
+                guest: null
+            },
+            turn: null
+        });
+
+        const linkInput = document.getElementById('share-link-input');
+        const linkArea = document.getElementById('game-link-area');
+        if (linkInput) linkInput.value = `https://t.me/morskoy_boyyy_bot?startapp=${gameId}`;
+        if (linkArea) linkArea.classList.remove('hidden');
+
+        onGame(gameId, game => {
+            if (game && game.players && game.players.guest) startGamePlacement();
+        });
+    } catch (e) {
+        console.error('Create battle failed:', e);
+        const msg = TEXTS[state.lang]?.error_create_battle || TEXTS.en.error_create_battle;
+        showToast(msg, 'error');
+    }
+}
+
+/**
+ * Постановка в очередь random-матчей. Используется для честного PvP и игры против бота.
+ */
+export async function queueRandom() {
+    if (!state.user) {
+        showScreen('screen-register');
+        return;
+    }
+    
+    // Проверка минимального рейтинга для ranked-игры
+    const userRating = state.user.rating || ECONOMY.START_RATING;
+    if (userRating < ECONOMY.MIN_RATING_FOR_RANKED) {
+        const msg = TEXTS[state.lang]?.error_low_rating || TEXTS.en.error_low_rating;
+        showToast(msg, 'error', 5000);
+        return;
+    }
+    
+    try {
+        resetGameState();
+        state.mode = 'random';
+        state.ranked = true;
+
+        // Запускаем экран поиска
+        state.matchmaking.active = true;
+        state.matchmaking.cancelled = false;
+        state.matchmaking.timer = 10;
+        showScreen('screen-matchmaking');
+        const timerEl = document.getElementById('matchmaking-timer');
+        if (timerEl) timerEl.textContent = String(state.matchmaking.timer);
+        if (state.matchmaking.intervalId) clearInterval(state.matchmaking.intervalId);
+        state.matchmaking.intervalId = setInterval(() => {
+            if (!state.matchmaking.active) {
+                clearInterval(state.matchmaking.intervalId);
+                state.matchmaking.intervalId = null;
+                return;
+            }
+            state.matchmaking.timer = Math.max(0, state.matchmaking.timer - 1);
+            if (timerEl) timerEl.textContent = String(state.matchmaking.timer);
+        }, 1000);
+
+        const result = await matchmakingService.queueRandom(state.user);
+
+        // Если за время ожидания пользователь отменил поиск — не стартуем матч.
+        if (state.matchmaking.cancelled) {
+            state.matchmaking.active = false;
+            if (state.matchmaking.intervalId) {
+                clearInterval(state.matchmaking.intervalId);
+                state.matchmaking.intervalId = null;
+            }
+            return;
+        }
+
+        state.gameId = result.gameId;
+
+        const game = await getGame(result.gameId);
+        if (game && game.players && game.players.guest && String(game.players.guest).startsWith('bot:')) {
+            const diff = String(game.players.guest).split(':')[1] || 'normal';
+            state.botState.difficulty = diff;
+            const msgKey =
+                diff === 'easy'
+                    ? 'matchmaking_vs_bot_easy'
+                    : diff === 'hard'
+                    ? 'matchmaking_vs_bot_hard'
+                    : 'matchmaking_vs_bot_normal';
+            const msg = TEXTS[state.lang]?.[msgKey] || TEXTS.en[msgKey];
+            if (msg) showToast(msg, 'info');
+        }
+
+        state.matchmaking.active = false;
+        if (state.matchmaking.intervalId) {
+            clearInterval(state.matchmaking.intervalId);
+            state.matchmaking.intervalId = null;
+        }
+
+        // Переход к расстановке
+        startGamePlacement();
+    } catch (e) {
+        console.error('Random matchmaking failed:', e);
+        const msg = TEXTS[state.lang]?.error_matchmaking || TEXTS.en.error_matchmaking;
+        showToast(msg, 'error');
+    }
+}
+
+export function cancelMatchmaking() {
+    if (!state.matchmaking.active) {
+        showScreen('screen-dashboard');
+        return;
+    }
+    state.matchmaking.cancelled = true;
+    state.matchmaking.active = false;
+    if (state.matchmaking.intervalId) {
+        clearInterval(state.matchmaking.intervalId);
+        state.matchmaking.intervalId = null;
+    }
+    showScreen('screen-dashboard');
+}
+
+export async function joinGame(gameId) {
+    resetGameState();
+    state.gameId = gameId;
+    const game = await getGame(gameId);
+    if (!game || !game.players || !game.players.host) return;
+    state.mode = game.mode || 'friend';
+    state.ranked = !!game.ranked;
+    state.weather = game.weather || 'calm';
+
+    await updateGame(gameId, {
+        status: 'placement',
+        players: {
+            host: game.players.host,
+            guest: state.user.uid
+        }
+    });
+    startGamePlacement();
+}
+
+export function startGamePlacement() {
+    showScreen('screen-placement');
+    renderPlacementGrid(placeCurrentShip);
+    renderShipSelector();
+}
+
+export function rotateShip() {
+    state.orientation = state.orientation === 'h' ? 'v' : 'h';
+    const tg = getTg();
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+export function placeCurrentShip(idx) {
+    if (state.shipsToPlace.length === 0) return;
+    const size = state.shipsToPlace[0];
+    const row = Math.floor(idx / GRID_SIZE);
+    const col = idx % GRID_SIZE;
+
+    if (!canPlaceShip(state.grid, row, col, size, state.orientation)) return;
+
+    const cellsToOccupy = [];
+    for (let i = 0; i < size; i++) {
+        const r = state.orientation === 'h' ? row : row + i;
+        const c = state.orientation === 'h' ? col + i : col;
+        cellsToOccupy.push(r * GRID_SIZE + c);
+    }
+
+    cellsToOccupy.forEach(i => (state.grid[i] = 's'));
+    state.shipsToPlace.shift();
+    state.ships.push({ cells: cellsToOccupy, hits: 0 });
+
+    renderPlacementGrid(placeCurrentShip);
+    renderShipSelector();
+
+    if (state.shipsToPlace.length === 0) {
+        const btn = document.getElementById('btn-ready');
+        if (btn) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+    }
+    const tg = getTg();
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+}
+
+export async function confirmPlacement() {
+    const btn = document.getElementById('btn-ready');
+    if (btn) btn.textContent = 'WAITING...';
+
+    await setPlayerData(state.gameId, state.user.uid, {
+        grid: state.grid,
+        ready: true
+    });
+
+    // Подготовим серверное представление кораблей для PvP: boards/{uid}/ships, totalShipCells, hitsCount=0
+    const shipsMap = {};
+    let cellsTotal = 0;
+    state.ships.forEach(ship => {
+        (ship.cells || []).forEach(idx => {
+            const key = String(idx);
+            shipsMap[key] = true;
+            cellsTotal += 1;
+        });
+    });
+    if (cellsTotal > 0) {
+        const updates = {};
+        updates['boards/' + state.user.uid] = {
+            ships: shipsMap,
+            totalShipCells: cellsTotal,
+            hitsCount: 0,
+            shots: {}
+        };
+        await updateGame(state.gameId, updates);
+    }
+
+    // Если игра против бота — начинаем сразу после готовности игрока.
+    const game = await getGame(state.gameId);
+    if (game && game.players && isBotGuest(game.players.guest)) {
+        initBattleBot(game);
+        return;
+    }
+
+    onPlayers(state.gameId, players => {
+        if (players && Object.keys(players).length === 2) {
+            const allReady = Object.values(players).every(p => p && p.ready);
+            if (allReady) initBattle(players);
+        }
+    });
+}
+
+function initBattle(players) {
+    offPlayers(state.gameId);
+    offGame(state.gameId);
+    showScreen('screen-battle');
+    const pIds = Object.keys(players);
+    const firstTurn = pIds[Math.floor(Math.random() * 2)];
+    updateGame(state.gameId, { turn: firstTurn, status: 'battle' });
+
+    renderBattleGrids(shoot);
+
+    onGame(state.gameId, handleGameUpdate);
+    onDisconnected(state.gameId, disconnected => {
+        if (!disconnected) return;
+        const oppIds = pIds.filter(id => id !== state.user.uid);
+        const oppLeft = oppIds.some(oppId => disconnected[oppId]);
+        if (oppLeft) {
+            showOpponentLeftMessage();
+            offGame(state.gameId);
+            offDisconnected(state.gameId);
+            showScreen('screen-dashboard');
+        }
+    });
+
+    resetTimer();
+}
+
+async function initBattleBot(game) {
+    offPlayers(state.gameId);
+    offGame(state.gameId);
+    showScreen('screen-battle');
+
+    const difficulty = getBotDifficultyFromGuest(game.players.guest);
+    state.botState.difficulty = difficulty;
+    botPlayer = new BotPlayer(difficulty);
+
+    // Генерируем поле бота один раз и сохраняем в игре (только для bot-матчей).
+    // Важно: это не "античит" (в идеале скрывать), но позволяет реализовать бой без серверного кода.
+    const botBoard = game.botBoard || generateRandomBoard();
+    const updates = {
+        status: 'battle',
+        // turn: либо игрок, либо бот
+        turn: Math.random() < 0.5 ? state.user.uid : BOT_UID,
+        botBoard,
+        playerShots: game.playerShots || {},
+        botShots: game.botShots || {},
+        playerHitsCount: game.playerHitsCount || 0,
+        botHitsCount: game.botHitsCount || 0,
+        finished: false
+    };
+    await updateGame(state.gameId, updates);
+
+    renderBattleGrids(shoot);
+    onGame(state.gameId, handleGameUpdate);
+    resetTimer();
+}
+
+function handleGameUpdate(game) {
+    if (!game) return;
+
+    if (game.status === 'finished' || game.finished) {
+        const msg = TEXTS[state.lang]?.match_finished || TEXTS.en.match_finished;
+        showToast(msg, 'success');
+        if (state.user && state.gameId) {
+            // Применяем экономику, статы и ачивки (каждый сервис сам защищён от повторов).
+            matchResultService.applyForUser(state.gameId, game, state.user.uid).catch(() => {});
+            statsService.recordMatch(state.gameId, game).catch(() => {});
+            achievementsService.updateForUser(state.gameId, game, state.user.uid).catch(() => {});
+        }
+        offGame(state.gameId);
+        offDisconnected(state.gameId);
+        showScreen('screen-dashboard');
+        return;
+    }
+
+    const isMyTurn = game.turn === state.user.uid;
+    const turnText = isMyTurn ? TEXTS[state.lang].your_turn : TEXTS[state.lang].enemy_turn;
+    setTurnIndicator(turnText, isMyTurn);
+
+    if (isMyTurn) {
+        const tg = getTg();
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    }
+
+    if (game.lastShot) {
+        if (game.lastShot.shooter === state.user.uid) {
+            setEnemyCellClass(game.lastShot.idx, game.lastShot.isHit ? 'hit' : 'miss');
+            if (game.lastShot.isHit) {
+                const tg = getTg();
+                if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+            } else if (getTg() && getTg().HapticFeedback) getTg().HapticFeedback.notificationOccurred('error');
+        } else {
+            updateGridVisuals(game.lastShot);
+            if (state.grid[game.lastShot.idx]) showShake();
+        }
+    }
+
+    resetTimer();
+
+    // Если это bot-матч и сейчас ход бота — планируем ход.
+    if (game.players && isBotGuest(game.players.guest) && game.turn === BOT_UID) {
+        scheduleBotMove(game).catch(e => console.warn('Bot move error', e));
+    }
+}
+
+export async function shoot(idx) {
+    const game = await getGame(state.gameId);
+    if (!game || game.turn !== state.user.uid) {
+        const tg = getTg();
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('error');
+        return;
+    }
+
+    const opponentId = game.players && game.players.host === state.user.uid
+        ? game.players.guest
+        : game.players.host;
+    if (!opponentId) return;
+
+    // Ветка "против бота"
+    if (isBotGuest(opponentId)) {
+        const playerShots = game.playerShots || {};
+        if (playerShots[String(idx)]) return; // уже стреляли
+
+        const botBoard = game.botBoard;
+        if (!botBoard) return;
+        const isHit = botBoard[idx] === 's';
+
+        const nextTurn = isHit ? state.user.uid : BOT_UID;
+        const newPlayerHits = (game.playerHitsCount || 0) + (isHit ? 1 : 0);
+        const finished = newPlayerHits >= TOTAL_SHIP_CELLS;
+
+        const updates = {
+            turn: finished ? null : nextTurn,
+            lastShot: { idx, isHit, shooter: state.user.uid },
+            lastShotAt: Date.now(),
+            playerShots: { ...playerShots, [String(idx)]: isHit ? 'hit' : 'miss' },
+            playerHitsCount: newPlayerHits
+        };
+
+        if (finished) {
+            updates.status = 'finished';
+            updates.finished = true;
+            updates.result = {
+                winner: state.user.uid,
+                loser: BOT_UID,
+                finishedAt: Date.now(),
+                botGame: true
+            };
+        }
+
+        await updateGame(state.gameId, updates);
+
+        // локальная отрисовка
+        setEnemyCellClass(idx, isHit ? 'hit' : 'miss');
+
+        return;
+    }
+
+    // Ветка PvP: сервер сам решает, было ли попадание, и завершает матч при необходимости.
+    const result = await runShootTransaction(state.gameId, state.user.uid, opponentId, idx);
+    if (!result || !result.committed) return;
+}
+
+let botMoveInFlight = false;
+async function scheduleBotMove(game) {
+    if (botMoveInFlight) return;
+    botMoveInFlight = true;
+    try {
+        // задержка 1–3 секунды
+        await sleep(randomInt(1000, 3000));
+
+        const fresh = await getGame(state.gameId);
+        if (!fresh || fresh.turn !== BOT_UID || fresh.finished || fresh.status === 'finished') return;
+
+        const botShots = fresh.botShots || {};
+        const myShotsArray = Array(GRID_SIZE * GRID_SIZE).fill(null);
+        for (const [k, v] of Object.entries(botShots)) {
+            const i = parseInt(k, 10);
+            if (!Number.isNaN(i)) myShotsArray[i] = v;
+        }
+
+        // Hunt targets: последние попадания бота по игроку
+        const huntTargets = (fresh.botLastHits || []).slice(-3);
+
+        const shotIdx = botPlayer.chooseShot({
+            gridSize: GRID_SIZE,
+            myShots: myShotsArray,
+            huntTargets
+        });
+        if (shotIdx < 0) return;
+        if (botShots[String(shotIdx)]) return;
+
+        const isHit = state.grid[shotIdx] === 's';
+        const nextTurn = isHit ? BOT_UID : state.user.uid;
+        const newBotHits = (fresh.botHitsCount || 0) + (isHit ? 1 : 0);
+        const finished = newBotHits >= TOTAL_SHIP_CELLS;
+
+        const newBotLastHits = isHit ? [...(fresh.botLastHits || []), shotIdx] : (fresh.botLastHits || []);
+        const updates = {
+            turn: finished ? null : nextTurn,
+            lastShot: { idx: shotIdx, isHit, shooter: BOT_UID },
+            lastShotAt: Date.now(),
+            botShots: { ...botShots, [String(shotIdx)]: isHit ? 'hit' : 'miss' },
+            botHitsCount: newBotHits,
+            botLastHits: newBotLastHits
+        };
+
+        if (finished) {
+            updates.status = 'finished';
+            updates.finished = true;
+            updates.result = {
+                winner: BOT_UID,
+                loser: state.user.uid,
+                finishedAt: Date.now(),
+                botGame: true
+            };
+        }
+
+        await updateGame(state.gameId, updates);
+    } finally {
+        botMoveInFlight = false;
+    }
+}
+
+export function adminAddCurrency(type) {
+    const uidEl = document.getElementById('admin-user-id');
+    const amountEl = document.getElementById('admin-amount');
+    const uid = uidEl && uidEl.value;
+    const amount = amountEl ? parseInt(amountEl.value, 10) : 0;
+    if (!uid || !amount) return;
+    adminAddCoinsOrGems(uid, type, amount).then(() => {
+        const msg = TEXTS[state.lang]?.admin_done || TEXTS.en.admin_done;
+        showToast(msg, 'success');
+    });
+}
+
+/** Загрузить данные для админ-панели (overview, matches, bans, logs). */
+export async function loadAdminData() {
+    try {
+        const [activeGames, globalStats, activity, matches, bans, logs] = await Promise.all([
+            getActiveGamesCount(),
+            getGlobalStats(),
+            getRecentActivity(),
+            getRecentMatches(),
+            getBans(),
+            getAdminLogs()
+        ]);
+
+        const ag = document.getElementById('admin-active-games');
+        const tg = document.getElementById('admin-total-games');
+        const hw = document.getElementById('admin-human-wins');
+        const bw = document.getElementById('admin-bot-wins');
+        if (ag) ag.textContent = String(activeGames);
+        if (tg) tg.textContent = String(globalStats.totalGames || 0);
+        if (hw) hw.textContent = String(globalStats.humanWins || 0);
+        if (bw) bw.textContent = String(globalStats.botWins || 0);
+
+        const actList = document.getElementById('admin-activity-list');
+        if (actList) {
+            actList.innerHTML = '';
+            const matchesText = TEXTS[state.lang]?.admin_matches || TEXTS.en.admin_matches;
+            activity.forEach(a => {
+                const li = document.createElement('li');
+                li.textContent = `${a.bucket}: ${a.matches || 0} ${matchesText}`;
+                actList.appendChild(li);
+            });
+        }
+
+        const matchesList = document.getElementById('admin-matches-list');
+        if (matchesList) {
+            matchesList.innerHTML = '';
+            matches.forEach(m => {
+                const li = document.createElement('li');
+                const mode = m.mode || 'random';
+                const winner = m.winner || 'n/a';
+                const duration = Math.round((m.durationMs || 0) / 1000);
+                li.textContent = `${m.gameId} | ${mode} | winner: ${winner} | ${duration}s`;
+                matchesList.appendChild(li);
+            });
+        }
+
+        const bansList = document.getElementById('admin-bans-list');
+        if (bansList) {
+            bansList.innerHTML = '';
+            bans.forEach(b => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between glass p-2 rounded';
+                const info = document.createElement('div');
+                info.className = 'flex-1';
+                const noReasonText = TEXTS[state.lang]?.admin_no_reason || TEXTS.en.admin_no_reason;
+                const reason = b.reason || noReasonText;
+                const date = new Date(b.timestamp || 0).toLocaleDateString();
+                info.textContent = `${b.uid}: ${reason} (${date})`;
+                li.appendChild(info);
+                const unbanBtn = document.createElement('button');
+                unbanBtn.className = 'btn-secondary px-2 py-1 rounded text-xs';
+                unbanBtn.textContent = TEXTS[state.lang]?.admin_unban || TEXTS.en.admin_unban;
+                unbanBtn.onclick = () => adminUnbanUser(b.uid);
+                li.appendChild(unbanBtn);
+                bansList.appendChild(li);
+            });
+        }
+
+        const logsList = document.getElementById('admin-logs-list');
+        if (logsList) {
+            logsList.innerHTML = '';
+            logs.forEach(l => {
+                const li = document.createElement('li');
+                li.textContent = `${new Date(l.timestamp || 0).toISOString()} | ${l.action} | ${JSON.stringify(l.payload || {})}`;
+                logsList.appendChild(li);
+            });
+        }
+    } catch (e) {
+        console.warn('Admin data load failed', e);
+    }
+}
+
+/** Показать профиль игрока для админа: рейтинг, статы, ачивки, последние матчи. */
+export async function adminViewProfile() {
+    const uidEl = document.getElementById('admin-user-id');
+    const profileBox = document.getElementById('admin-user-profile');
+    if (!uidEl || !profileBox) return;
+    const uid = uidEl.value.trim();
+    if (!uid) return;
+
+    try {
+        const [user, matches] = await Promise.all([getUser(uid), getMatchesForUser(uid, 10)]);
+        if (!user) {
+            profileBox.classList.remove('hidden');
+            profileBox.innerHTML = `<div>User not found</div>`;
+            return;
+        }
+        const winrate = user.games ? Math.round((user.wins || 0) / user.games * 100) : 0;
+        const achievements = Object.keys(user.achievements || {});
+
+        const matchesHtml = matches
+            .map(m => {
+                const mode = m.mode || 'random';
+                const ranked = m.ranked ? 'R' : 'C';
+                const youWinner = m.winner === uid ? 'W' : (m.loser === uid ? 'L' : '?');
+                const dur = Math.round((m.durationMs || 0) / 1000);
+                return `<li>${m.gameId} | ${mode}/${ranked} | ${youWinner} | ${dur}s</li>`;
+            })
+            .join('');
+
+        profileBox.classList.remove('hidden');
+        profileBox.innerHTML = `
+            <div><strong>${user.nickname || uid}</strong> (uid: ${uid})</div>
+            <div>Rating: ${user.rating || 0}</div>
+            <div>Coins: ${user.coins || 0}</div>
+            <div>Games: ${user.games || 0}, Wins: ${user.wins || 0}, Losses: ${user.losses || 0}, Winrate: ${winrate}%</div>
+            <div>Best streak: ${user.bestWinStreak || 0}</div>
+            <div>Achievements: ${achievements.length ? achievements.join(', ') : 'none'}</div>
+            <div class="mt-2">
+                <div class="font-bold mb-1">Recent matches:</div>
+                <ul class="space-y-1">${matchesHtml || '<li>no matches</li>'}</ul>
+            </div>
+        `;
+    } catch (e) {
+        console.warn('Admin profile load failed', e);
+    }
+}
+
+/** Загрузить лидерборды: рейтинг, винрейт (30+ игр), количество игр. */
+export async function loadLeaderboards() {
+    try {
+        const [byRating, users] = await Promise.all([
+            getTopByRating(50),
+            getUsersForLeaderboards(200)
+        ]);
+
+        // Rating: уже отсортирован getTopByRating
+        const ratingList = document.getElementById('lb-rating-list');
+        if (ratingList) {
+            ratingList.innerHTML = '';
+            byRating.forEach((u, idx) => {
+                const li = document.createElement('li');
+                const wr = u.games ? Math.round((u.wins || 0) / u.games * 100) : 0;
+                li.textContent = `${idx + 1}. ${u.nickname || u.uid} — ${u.rating || 0} (${u.games || 0} games, ${wr}% winrate)`;
+                ratingList.appendChild(li);
+            });
+        }
+
+        // Games: сортируем по количеству игр
+        const usersByGames = [...users].sort((a, b) => (b.games || 0) - (a.games || 0)).slice(0, 50);
+        const gamesList = document.getElementById('lb-games-list');
+        if (gamesList) {
+            gamesList.innerHTML = '';
+            usersByGames.forEach((u, idx) => {
+                const wr = u.games ? Math.round((u.wins || 0) / u.games * 100) : 0;
+                const li = document.createElement('li');
+                li.textContent = `${idx + 1}. ${u.nickname || u.uid} — ${u.games || 0} games (${wr}% winrate)`;
+                gamesList.appendChild(li);
+            });
+        }
+
+        // Winrate 30+: фильтруем пользователей с играми >= 30
+        const with30 = users.filter(u => (u.games || 0) >= 30);
+        const byWinrate = with30
+            .map(u => ({
+                ...u,
+                winrate: u.games ? (u.wins || 0) / u.games : 0
+            }))
+            .sort((a, b) => b.winrate - a.winrate)
+            .slice(0, 50);
+
+        const winrateList = document.getElementById('lb-winrate-list');
+        if (winrateList) {
+            winrateList.innerHTML = '';
+            byWinrate.forEach((u, idx) => {
+                const wr = Math.round(u.winrate * 100);
+                const li = document.createElement('li');
+                li.textContent = `${idx + 1}. ${u.nickname || u.uid} — ${wr}% (${u.wins || 0}/${u.games || 0})`;
+                winrateList.appendChild(li);
+            });
+        }
+    } catch (e) {
+        console.warn('Leaderboards load failed', e);
+    }
+}
+
+export function showLeaderboardTab(tab) {
+    const ratingPanel = document.getElementById('lb-panel-rating');
+    const winratePanel = document.getElementById('lb-panel-winrate');
+    const gamesPanel = document.getElementById('lb-panel-games');
+    if (!ratingPanel || !winratePanel || !gamesPanel) return;
+
+    ratingPanel.classList.add('hidden');
+    winratePanel.classList.add('hidden');
+    gamesPanel.classList.add('hidden');
+
+    if (tab === 'rating') ratingPanel.classList.remove('hidden');
+    else if (tab === 'winrate') winratePanel.classList.remove('hidden');
+    else if (tab === 'games') gamesPanel.classList.remove('hidden');
+}
+
+export function showAdminTab(tab) {
+    const overviewPanel = document.getElementById('admin-panel-overview');
+    const matchesPanel = document.getElementById('admin-panel-matches');
+    const bansPanel = document.getElementById('admin-panel-bans');
+    const logsPanel = document.getElementById('admin-panel-logs');
+    if (!overviewPanel || !matchesPanel || !bansPanel || !logsPanel) return;
+
+    overviewPanel.classList.add('hidden');
+    matchesPanel.classList.add('hidden');
+    bansPanel.classList.add('hidden');
+    logsPanel.classList.add('hidden');
+
+    if (tab === 'overview') overviewPanel.classList.remove('hidden');
+    else if (tab === 'matches') matchesPanel.classList.remove('hidden');
+    else if (tab === 'bans') bansPanel.classList.remove('hidden');
+    else if (tab === 'logs') logsPanel.classList.remove('hidden');
+}
+
+export async function adminBanUser() {
+    if (!state.user) return;
+    const uidEl = document.getElementById('admin-ban-uid');
+    const reasonEl = document.getElementById('admin-ban-reason');
+    const uid = uidEl && uidEl.value.trim();
+    const reason = (reasonEl && reasonEl.value.trim()) || 'no reason';
+    if (!uid) return;
+
+    try {
+        await setBan(uid, reason, state.user.uid);
+        await logAdminAction(state.user.uid, 'BAN_USER', { targetUid: uid, reason });
+        const msg = TEXTS[state.lang]?.admin_done || TEXTS.en.admin_done;
+        showToast(msg, 'success');
+        if (uidEl) uidEl.value = '';
+        if (reasonEl) reasonEl.value = '';
+        await loadAdminData();
+    } catch (e) {
+        console.error('Ban failed', e);
+        showToast('Failed to ban user', 'error');
+    }
+}
+
+export async function adminUnbanUser(uid) {
+    if (!state.user || !uid) return;
+    try {
+        await clearBan(uid);
+        await logAdminAction(state.user.uid, 'UNBAN_USER', { targetUid: uid });
+        const msg = TEXTS[state.lang]?.admin_done || TEXTS.en.admin_done;
+        showToast(msg, 'success');
+        await loadAdminData();
+    } catch (e) {
+        console.error('Unban failed', e);
+        showToast('Failed to unban user', 'error');
+    }
+}
+
+/** Вызывать при уходе со страницы/закрытии мини-приложения — отметить дисконнект. */
+export function notifyDisconnect() {
+    if (state.gameId && state.user) {
+        setPlayerDisconnected(state.gameId, state.user.uid).catch(() => {});
+    }
+}
+</file>
+
+<file path="js/main.js">
+/**
+ * Точка входа: инициализация, авто-логин, глобальные обработчики и Telegram Back Button.
+ */
+
+import { tryAutoLogin, getTg, bindRegisterButton } from './auth.js';
+import { showScreen, setLanguage, setScreenChangeCallback, applyTranslations } from './ui.js';
+import { shouldShowOnboarding, showOnboarding, initOnboardingHandlers } from './onboarding.js';
+import { createBattle, joinGame, confirmPlacement, rotateShip, adminAddCurrency, notifyDisconnect, queueRandom, loadAdminData, adminViewProfile, cancelMatchmaking, loadLeaderboards, showLeaderboardTab, showAdminTab, adminBanUser, adminUnbanUser } from './game.js';
+import { copyGameLink } from './ui.js';
+import { state } from './state.js';
+import { TEXTS } from './config.js';
+import { initShop, buyAbility } from './economyController.js';
+import { logClientError } from './database.js';
+
+// Глобальные функции для onclick в HTML
+window.showScreen = showScreen;
+window.setLanguage = setLanguage;
+window.createBattle = createBattle;
+window.queueRandom = queueRandom;
+window.copyGameLink = copyGameLink;
+window.rotateShip = rotateShip;
+window.confirmPlacement = confirmPlacement;
+window.adminAddCurrency = adminAddCurrency;
+window.buyAbility = buyAbility;
+window.adminViewProfile = adminViewProfile;
+window.cancelMatchmaking = cancelMatchmaking;
+window.adminBanUser = adminBanUser;
+window.adminUnbanUser = adminUnbanUser;
+window.openLeaderboards = async function () {
+    showScreen('screen-leaderboards');
+    await loadLeaderboards();
+    showLeaderboardTab('rating');
+};
+
+function setupTelegramBackButton() {
+    const tg = getTg();
+    if (!tg || !tg.BackButton) return;
+
+    const screenHistory = [];
+
+    setScreenChangeCallback(sid => {
+        if (sid === 'screen-language') {
+            screenHistory.length = 0;
+            screenHistory.push(sid);
+            tg.BackButton.hide();
+        } else {
+            if (screenHistory.length === 0) screenHistory.push('screen-language');
+            screenHistory.push(sid);
+            tg.BackButton.show();
+        }
+    });
+
+    tg.BackButton.onClick(() => {
+        if (screenHistory.length <= 1) {
+            showScreen('screen-language');
+            screenHistory.length = 0;
+            screenHistory.push('screen-language');
+            tg.BackButton.hide();
+            return;
+        }
+        screenHistory.pop();
+        const prev = screenHistory[screenHistory.length - 1];
+        showScreen(prev);
+    });
+}
+
+function setupDisconnectOnLeave() {
+    const onLeave = () => {
+        notifyDisconnect();
+    };
+    window.addEventListener('pagehide', onLeave);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') onLeave();
+    });
+}
+
+function setupErrorLogging() {
+    // Обработчик глобальных ошибок JavaScript
+    window.onerror = function(message, source, lineno, colno, error) {
+        const uid = state.user?.uid || null;
+        logClientError(message, source, lineno, colno, error, uid);
+        // Возвращаем false, чтобы браузер показал ошибку в консоли
+        return false;
+    };
+    
+    // Обработчик необработанных промисов
+    window.addEventListener('unhandledrejection', function(event) {
+        const uid = state.user?.uid || null;
+        const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+        logClientError(
+            `Unhandled Promise Rejection: ${event.reason}`,
+            'promise',
+            null,
+            null,
+            error,
+            uid
+        );
+    });
+}
+
+async function init() {
+    try {
+        getTg();
+    } catch (e) {}
+    
+    // Настраиваем логирование ошибок
+    setupErrorLogging();
+
+    const savedLang = localStorage.getItem('lang');
+    if (savedLang && (savedLang === 'en' || savedLang === 'ru')) {
+        state.lang = savedLang;
+        document.querySelectorAll('[data-key]').forEach(el => {
+            const key = el.getAttribute('data-key');
+            if (TEXTS[savedLang] && TEXTS[savedLang][key]) {
+                if (el.tagName === 'INPUT') el.placeholder = TEXTS[savedLang][key];
+                else el.textContent = TEXTS[savedLang][key];
+            }
+        });
+    }
+
+    initOnboardingHandlers();
+    
+    const loggedIn = await tryAutoLogin();
+    if (loggedIn) {
+        applyTranslations();
+        const params = new URLSearchParams(window.location.search);
+        const joinGameId = params.get('startapp');
+        if (joinGameId) await joinGame(joinGameId);
+    } else {
+        // Проверяем, нужно ли показать onboarding
+        if (shouldShowOnboarding()) {
+            showOnboarding();
+            applyTranslations();
+        } else {
+            showScreen('screen-language');
+        }
+    }
+
+    bindRegisterButton();
+    setupTelegramBackButton();
+    setupDisconnectOnLeave();
+    initShop();
+
+    const adminBtn = document.getElementById('admin-btn');
+    if (adminBtn) {
+        adminBtn.addEventListener('click', () => {
+            loadAdminData();
+            showAdminTab('overview');
+        });
+    }
+
+    // Переключатель табов админки
+    const adminTabOverview = document.getElementById('admin-tab-overview');
+    const adminTabMatches = document.getElementById('admin-tab-matches');
+    const adminTabBans = document.getElementById('admin-tab-bans');
+    const adminTabLogs = document.getElementById('admin-tab-logs');
+    if (adminTabOverview && adminTabMatches && adminTabBans && adminTabLogs) {
+        adminTabOverview.addEventListener('click', () => showAdminTab('overview'));
+        adminTabMatches.addEventListener('click', () => showAdminTab('matches'));
+        adminTabBans.addEventListener('click', () => {
+            showAdminTab('bans');
+            loadAdminData();
+        });
+        adminTabLogs.addEventListener('click', () => {
+            showAdminTab('logs');
+            loadAdminData();
+        });
+    }
+
+    // Локальный переключатель табов лидербордов
+    const lbRating = document.getElementById('lb-tab-rating');
+    const lbWinrate = document.getElementById('lb-tab-winrate');
+    const lbGames = document.getElementById('lb-tab-games');
+    if (lbRating && lbWinrate && lbGames) {
+        lbRating.addEventListener('click', () => showLeaderboardTab('rating'));
+        lbWinrate.addEventListener('click', () => showLeaderboardTab('winrate'));
+        lbGames.addEventListener('click', () => showLeaderboardTab('games'));
+    }
+}
+
+init().catch(e => console.error('Init error:', e));
+</file>
+
+<file path="js/onboarding.js">
+/**
+ * Onboarding система: показывает слайды при первом входе.
+ */
+
+import { state } from './state.js';
+import { TEXTS } from './config.js';
+import { showScreen, applyTranslations } from './ui.js';
+
+let currentSlide = 1;
+const TOTAL_SLIDES = 3;
+
+export function shouldShowOnboarding() {
+    return !localStorage.getItem('onboarding_shown');
+}
+
+export function markOnboardingShown() {
+    localStorage.setItem('onboarding_shown', 'true');
+}
+
+export function showOnboarding() {
+    currentSlide = 1;
+    showScreen('screen-onboarding');
+    updateOnboardingUI();
+    // Применить переводы к элементам onboarding
+    applyTranslations();
+}
+
+function updateOnboardingUI() {
+    // Показать текущий слайд
+    for (let i = 1; i <= TOTAL_SLIDES; i++) {
+        const slide = document.getElementById(`onboarding-slide-${i}`);
+        const dot = document.getElementById(`onboarding-dot-${i}`);
+        if (slide) {
+            if (i === currentSlide) {
+                slide.classList.remove('hidden');
+            } else {
+                slide.classList.add('hidden');
+            }
+        }
+        if (dot) {
+            if (i === currentSlide) {
+                dot.classList.remove('bg-white/30');
+                dot.classList.add('bg-cyan-400');
+            } else {
+                dot.classList.remove('bg-cyan-400');
+                dot.classList.add('bg-white/30');
+            }
+        }
+    }
+
+    // Обновить кнопки
+    const nextBtn = document.getElementById('onboarding-next');
+    const startBtn = document.getElementById('onboarding-start');
+    const skipBtn = document.getElementById('onboarding-skip');
+    
+    if (currentSlide === TOTAL_SLIDES) {
+        if (nextBtn) nextBtn.classList.add('hidden');
+        if (startBtn) startBtn.classList.remove('hidden');
+    } else {
+        if (nextBtn) nextBtn.classList.remove('hidden');
+        if (startBtn) startBtn.classList.add('hidden');
+    }
+}
+
+export function nextOnboardingSlide() {
+    if (currentSlide < TOTAL_SLIDES) {
+        currentSlide++;
+        updateOnboardingUI();
+    }
+}
+
+export function skipOnboarding() {
+    markOnboardingShown();
+    showScreen('screen-language');
+}
+
+export function finishOnboarding() {
+    markOnboardingShown();
+    showScreen('screen-language');
+}
+
+export function initOnboardingHandlers() {
+    const nextBtn = document.getElementById('onboarding-next');
+    const startBtn = document.getElementById('onboarding-start');
+    const skipBtn = document.getElementById('onboarding-skip');
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            nextOnboardingSlide();
+        });
+    }
+    
+    if (startBtn) {
+        startBtn.addEventListener('click', () => {
+            finishOnboarding();
+        });
+    }
+    
+    if (skipBtn) {
+        skipBtn.addEventListener('click', () => {
+            skipOnboarding();
+        });
+    }
+}
+</file>
+
+<file path="js/services.js">
+/**
+ * Сервисный слой: матчмейкинг, экономика, бот, статистика.
+ * Ориентирован на SOLID: каждый класс отвечает за одну зону ответственности.
+ */
+
+import { ECONOMY, ABILITIES, WEATHER_TYPES } from './config.js';
+import {
+    getDb,
+    enterMatchmakingQueue,
+    leaveMatchmakingQueue,
+    getMatchmakingQueue,
+    getUser,
+    setUser,
+    incrementGlobalStats
+} from './database.js';
+
+/**
+ * MatchmakingService
+ * Отвечает за постановку в очередь, поиск соперника и создание игр (включая бота).
+ */
+export class MatchmakingService {
+    constructor({ ratingDelta = 100, botWaitMs = 10000 } = {}) {
+        this.ratingDelta = ratingDelta;
+        this.botWaitMs = botWaitMs;
+    }
+
+    /**
+     * Поставить игрока в очередь и попытаться найти соперника.
+     * Возвращает { type: 'player', gameId } или { type: 'bot', gameId }.
+     */
+    async queueRandom(user) {
+        await enterMatchmakingQueue(user.uid, user.rating);
+        const start = Date.now();
+
+        while (Date.now() - start < this.botWaitMs) {
+            const match = await this.tryFindOpponent(user);
+            if (match) {
+                return { type: 'player', gameId: match.gameId };
+            }
+            await new Promise(r => setTimeout(r, 1500));
+        }
+
+        // Не нашли соперника — играем против бота
+        await leaveMatchmakingQueue(user.uid);
+        const gameId = await this.createBotGame(user);
+        return { type: 'bot', gameId };
+    }
+
+    async tryFindOpponent(user) {
+        const queue = await getMatchmakingQueue();
+        const entries = Object.entries(queue);
+        if (entries.length === 0) return null;
+
+        let best = null;
+        let bestDiff = Number.MAX_SAFE_INTEGER;
+
+        for (const [uid, info] of entries) {
+            if (uid === user.uid) continue;
+            const rating = info.rating || ECONOMY.START_RATING;
+            const diff = Math.abs(rating - (user.rating || ECONOMY.START_RATING));
+            if (diff <= this.ratingDelta && diff < bestDiff) {
+                best = { uid, rating };
+                bestDiff = diff;
+            }
+        }
+
+        if (!best) return null;
+
+        const gameId = 'game_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        const hostUid = user.uid < best.uid ? user.uid : best.uid;
+        const guestUid = user.uid < best.uid ? best.uid : user.uid;
+        const weather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+
+        const gameRef = getDb().ref('games/' + gameId);
+        await gameRef.set({
+            status: 'waiting',
+            mode: 'random',
+            ranked: true,
+            weather,
+            createdAt: Date.now(),
+            players: {
+                host: hostUid,
+                guest: guestUid
+            },
+            turn: null
+        });
+
+        await Promise.all([leaveMatchmakingQueue(user.uid), leaveMatchmakingQueue(best.uid)]);
+
+        return { gameId };
+    }
+
+    /**
+     * Создать игру против бота. Сложность зависит от рейтинга игрока.
+     */
+    async createBotGame(user) {
+        const rating = user.rating || ECONOMY.START_RATING;
+        let difficulty = 'normal';
+        if (rating < 500) difficulty = 'easy';
+        else if (rating > 1500) difficulty = 'hard';
+
+        const gameId = 'game_bot_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        const weather = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+
+        await getDb()
+            .ref('games/' + gameId)
+            .set({
+                status: 'waiting',
+                mode: 'random',
+                ranked: true,
+                weather,
+                createdAt: Date.now(),
+                players: {
+                    host: user.uid,
+                    guest: `bot:${difficulty}`
+                },
+                turn: null,
+                bot: {
+                    difficulty,
+                    searchMode: 'search'
+                }
+            });
+
+        return gameId;
+    }
+}
+
+/**
+ * BotPlayer
+ * Не видит корабли напрямую, использует вероятностную карту.
+ */
+export class BotPlayer {
+    constructor(difficulty = 'normal') {
+        this.difficulty = difficulty; // easy | normal | hard
+        this.errorChance = this.computeErrorChance(difficulty);
+    }
+
+    computeErrorChance(diff) {
+        if (diff === 'easy') return 0.3;
+        if (diff === 'hard') return 0.08;
+        return 0.15;
+    }
+
+    /**
+     * Выбор клетки для выстрела.
+     * gameView: { gridSize, myShots[ idx: 'hit'|'miss'|null ], huntTargets: number[] }
+     */
+    chooseShot(gameView) {
+        const { gridSize, myShots, huntTargets } = gameView;
+        const size = gridSize * gridSize;
+        const scores = new Array(size).fill(0);
+
+        // Базовая вероятность — выше в центре
+        for (let i = 0; i < size; i++) {
+            if (myShots[i]) continue;
+            const row = Math.floor(i / gridSize);
+            const col = i % gridSize;
+            const centerDist = Math.abs(row - gridSize / 2) + Math.abs(col - gridSize / 2);
+            scores[i] += Math.max(0, gridSize - centerDist);
+        }
+
+        // Hunt режим: усиливаем клетки вокруг последних попаданий
+        for (const hitIdx of huntTargets || []) {
+            const row = Math.floor(hitIdx / gridSize);
+            const col = hitIdx % gridSize;
+            const neighbors = [
+                [row - 1, col],
+                [row + 1, col],
+                [row, col - 1],
+                [row, col + 1]
+            ];
+            for (const [r, c] of neighbors) {
+                if (r < 0 || r >= gridSize || c < 0 || c >= gridSize) continue;
+                const idx = r * gridSize + c;
+                if (myShots[idx]) continue;
+                scores[idx] += 20;
+            }
+        }
+
+        // Небольшой шум случайности
+        for (let i = 0; i < size; i++) {
+            if (myShots[i]) continue;
+            scores[i] += Math.random() * 5;
+        }
+
+        // Сортируем индексы по убыванию оценки
+        const candidates = [...Array(size).keys()].filter(i => !myShots[i]);
+        candidates.sort((a, b) => scores[b] - scores[a]);
+
+        if (candidates.length === 0) return -1;
+
+        // Ошибка: иногда выбираем не лучший выстрел
+        const rnd = Math.random();
+        if (rnd < this.errorChance && candidates.length > 3) {
+            const randomBadIndex = Math.min(
+                candidates.length - 1,
+                3 + Math.floor(Math.random() * (candidates.length - 3))
+            );
+            return candidates[randomBadIndex];
+        }
+
+        return candidates[0];
+    }
+}
+
+/**
+ * EconomyService
+ * Отвечает за экономику (покупка способностей, награды за матчи).
+ */
+export class EconomyService {
+    async purchaseAbility(uid, abilityId) {
+        const def = ABILITIES[abilityId];
+        if (!def) throw new Error('Unknown ability: ' + abilityId);
+        const user = await getUser(uid);
+        if (!user) throw new Error('User not found');
+
+        const cost = def.cost;
+        const coins = user.coins ?? ECONOMY.START_COINS;
+        if (coins < cost) throw new Error('Not enough coins');
+
+        const newCoins = coins - cost;
+        const currentCount = (user.abilities && user.abilities[abilityId]) || 0;
+        const newCount = currentCount + 1;
+
+        await setUser(uid, {
+            coins: newCoins,
+            abilities: {
+                ...(user.abilities || {}),
+                [abilityId]: newCount
+            }
+        });
+
+        return { coins: newCoins, count: newCount };
+    }
+}
+
+/**
+ * MatchResultService
+ * Применяет результаты матча (рейтинг, монеты, статы, глобальная аналитика).
+ */
+export class MatchResultService {
+    /**
+     * Применить результат матча к одному пользователю.
+     * game: объект games/{gameId}, uid: auth.uid игрока.
+     */
+    async applyForUser(gameId, game, uid) {
+        if (!game || !game.result) return;
+
+        const user = await getUser(uid);
+        if (!user) return;
+
+        // защита от повторной обработки
+        if (user.lastGameId === gameId) return;
+
+        const ranked = !!game.ranked;
+        const isWinner = game.result.winner === uid;
+        const isLoser = game.result.loser === uid;
+
+        if (!isWinner && !isLoser) return;
+
+        let rating = user.rating ?? ECONOMY.START_RATING;
+        let coins = user.coins ?? ECONOMY.START_COINS;
+        let wins = user.wins ?? 0;
+        let losses = user.losses ?? 0;
+        let gamesPlayed = user.games ?? 0;
+
+        if (ranked) {
+            if (isWinner) {
+                rating += ECONOMY.RANKED_WIN_RATING_DELTA;
+            } else if (isLoser) {
+                rating = Math.max(ECONOMY.MIN_RATING, rating + ECONOMY.RANKED_LOSS_RATING_DELTA);
+            }
+        }
+
+        if (isWinner) {
+            coins += ECONOMY.RANKED_WIN_COINS;
+            wins += 1;
+        } else if (isLoser) {
+            coins += ECONOMY.RANKED_LOSS_COINS;
+            losses += 1;
+        }
+        gamesPlayed += 1;
+
+        await setUser(uid, {
+            rating,
+            coins,
+            wins,
+            losses,
+            games: gamesPlayed,
+            lastGameId: gameId,
+            lastGameAt: game.result.finishedAt || Date.now()
+        });
+
+        const botGame = !!game.result.botGame;
+        if (botGame) {
+            await incrementGlobalStats({
+                totalGamesDelta: 1,
+                humanWinsDelta: isWinner ? 1 : 0,
+                botWinsDelta: isLoser ? 1 : 0
+            });
+        } else {
+            await incrementGlobalStats({ totalGamesDelta: 1 });
+        }
+    }
+}
+
+/**
+ * StatsService
+ * Отвечает за запись matchHistory и агрегированную активность по часам.
+ */
+export class StatsService {
+    getHourBucket(timestamp) {
+        const d = new Date(timestamp);
+        const Y = d.getUTCFullYear();
+        const M = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const D = String(d.getUTCDate()).padStart(2, '0');
+        const H = String(d.getUTCHours()).padStart(2, '0');
+        return `${Y}-${M}-${D}-${H}`;
+    }
+
+    async recordMatch(gameId, game) {
+        if (!game || !game.result) return;
+        const db = getDb();
+
+        // Если матч уже записан в историю — ничего не делаем (идемпотентность).
+        const historyRef = db.ref('matchHistory/' + gameId);
+        const snap = await historyRef.once('value');
+        if (snap.exists()) return;
+
+        const createdAt = game.createdAt || Date.now();
+        const finishedAt = game.result.finishedAt || Date.now();
+        const durationMs = Math.max(0, finishedAt - createdAt);
+
+        const summary = {
+            createdAt,
+            finishedAt,
+            mode: game.mode || 'random',
+            ranked: !!game.ranked,
+            weather: game.weather || 'calm',
+            players: game.players || {},
+            winner: game.result.winner,
+            loser: game.result.loser,
+            botGame: !!game.result.botGame,
+            durationMs
+        };
+
+        await historyRef.set(summary);
+
+        // Активность по часам
+        const bucket = this.getHourBucket(finishedAt);
+        const actRef = db.ref('stats/activity/' + bucket);
+        await actRef.transaction(current => {
+            const cur = current || {};
+            return {
+                onlineCount: cur.onlineCount || 0, // можно обновлять отдельно
+                matches: (cur.matches || 0) + 1
+            };
+        });
+    }
+}
+
+/**
+ * AchievementsService
+ * Простая система ачивок: без способностей, быстрый матч, серия побед.
+ */
+export class AchievementsService {
+    async updateForUser(gameId, game, uid) {
+        if (!game || !game.result) return;
+        const user = await getUser(uid);
+        if (!user) return;
+
+        const achievements = user.achievements || {};
+        let changed = false;
+
+        const isWinner = game.result.winner === uid;
+
+        // Победа без способностей
+        if (isWinner) {
+            const used = game.abilitiesUsed && game.abilitiesUsed[uid];
+            if (!used || Object.keys(used).length === 0) {
+                if (!achievements.no_abilities_win) {
+                    achievements.no_abilities_win = true;
+                    changed = true;
+                }
+            }
+        }
+
+        // Быстрая победа: < 10 ходов (для матчей против бота)
+        if (isWinner && game.result.botGame) {
+            const playerShots = game.playerShots ? Object.keys(game.playerShots).length : 0;
+            const botShots = game.botShots ? Object.keys(game.botShots).length : 0;
+            if (playerShots + botShots < 10) {
+                if (!achievements.fast_win) {
+                    achievements.fast_win = true;
+                    changed = true;
+                }
+            }
+        }
+
+        // Серия побед (5 и более)
+        let streak = user.currentWinStreak || 0;
+        let bestStreak = user.bestWinStreak || 0;
+        if (isWinner) {
+            streak += 1;
+            if (streak > bestStreak) bestStreak = streak;
+            if (streak >= 5 && !achievements.win_streak_5) {
+                achievements.win_streak_5 = true;
+                changed = true;
+            }
+        } else {
+            streak = 0;
+        }
+
+        if (changed || streak !== user.currentWinStreak || bestStreak !== user.bestWinStreak) {
+            await setUser(uid, {
+                achievements,
+                currentWinStreak: streak,
+                bestWinStreak: bestStreak
+            });
+        }
+    }
+}
+
+</file>
+
+<file path="js/state.js">
+/**
+ * Глобальное состояние приложения.
+ * Здесь нет бизнес-логики — только кэш текущего пользователя и матча.
+ */
+
+import { GRID_SIZE, SHIP_SIZES } from './config.js';
+
+export const state = {
+    lang: 'en',
+    /**
+     * user: {
+     *   uid: string,
+     *   telegramId: number | null,
+     *   nickname: string,
+     *   rating: number,
+     *   coins: number,
+     *   wins: number,
+     *   losses: number,
+     *   games: number,
+     *   banned: boolean,
+     *   abilities: Record<string, number>
+     * }
+     */
+    user: null,
+
+    gameId: null,
+
+    // Локальное представление своей доски и кораблей
+    grid: Array(GRID_SIZE * GRID_SIZE).fill(null),
+    ships: [],
+    currentShipSize: 4,
+    orientation: 'h',
+    shipsToPlace: [...SHIP_SIZES],
+
+    // Вражеская сетка (для отрисовки попаданий/промахов)
+    enemyGrid: Array(GRID_SIZE * GRID_SIZE).fill(null),
+
+    // Текущие параметры боя
+    timerInterval: null,
+    weather: 'calm',
+    ranked: false,
+    mode: 'friend', // friend | random
+    opponent: null, // { uid, nickname, rating, isBot, botDifficulty }
+
+    // Локальная карта вероятностей для бота (используем только в клиентах, которые двигают бота)
+    botState: {
+        difficulty: 'normal', // easy | normal | hard
+        mode: 'search',       // search | hunt
+        lastHits: []          // список индексов последних попаданий
+    },
+
+    // Матчмейкинг
+    matchmaking: {
+        active: false,
+        cancelled: false,
+        timer: 0,
+        intervalId: null
+    }
+};
+
+/** Сброс состояния игры (сетка, корабли, бой) для новой партии. */
+export function resetGameState() {
+    state.gameId = null;
+    state.grid = Array(GRID_SIZE * GRID_SIZE).fill(null);
+    state.ships = [];
+    state.shipsToPlace = [...SHIP_SIZES];
+    state.enemyGrid = Array(GRID_SIZE * GRID_SIZE).fill(null);
+    state.weather = 'calm';
+    state.ranked = false;
+    state.mode = 'friend';
+    state.opponent = null;
+    state.botState = { difficulty: 'normal', mode: 'search', lastHits: [] };
+    state.matchmaking = { active: false, cancelled: false, timer: 0, intervalId: null };
+    if (state.timerInterval) {
+        clearInterval(state.timerInterval);
+        state.timerInterval = null;
+    }
+}
+</file>
+
+<file path="js/ui.js">
+/**
+ * Переключение экранов, локализация, отрисовка кнопок и сеток.
+ */
+
+import { state } from './state.js';
+import { TEXTS } from './config.js';
+import { getTg } from './auth.js';
+import { setUser } from './database.js';
+
+let onScreenChange = null;
+export function setScreenChangeCallback(cb) {
+    onScreenChange = cb;
+}
+
+export function showScreen(id) {
+    const fullId = id && id.startsWith('screen-') ? id : 'screen-' + id;
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const el = document.getElementById(fullId);
+    if (el) el.classList.add('active');
+    if (onScreenChange) onScreenChange(fullId);
+}
+
+/** Применить текущий язык ко всем элементам с data-key. */
+export function applyTranslations() {
+    const lang = state.lang;
+    document.querySelectorAll('[data-key]').forEach(el => {
+        const key = el.getAttribute('data-key');
+        if (TEXTS[lang] && TEXTS[lang][key]) {
+            if (el.tagName === 'INPUT') el.placeholder = TEXTS[lang][key];
+            else el.textContent = TEXTS[lang][key];
+        }
+    });
+}
+
+export function setLanguage(lang) {
+    state.lang = lang;
+    localStorage.setItem('lang', lang);
+    applyTranslations();
+
+    showScreen('screen-register');
+    if (state.user) {
+        showScreen('screen-dashboard');
+        setUser(state.user.uid, { language: lang }).catch(() => {});
+    }
+}
+
+export function updateDash() {
+    if (!state.user) return;
+    const nameEl = document.getElementById('user-display-name');
+    const coinsEl = document.getElementById('dash-coins');
+    const winsEl = document.getElementById('dash-wins');
+    const winrateEl = document.getElementById('dash-winrate');
+    if (nameEl) nameEl.textContent = state.user.nickname;
+    if (coinsEl) coinsEl.textContent = state.user.coins;
+    if (winsEl) winsEl.textContent = state.user.wins;
+    if (winrateEl) winrateEl.textContent = state.user.games ? Math.round((state.user.wins / state.user.games) * 100) + '%' : '0%';
+}
+
+export function renderPlacementGrid(onCellClick) {
+    const grid = document.getElementById('placement-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    state.grid.forEach((val, idx) => {
+        const cell = document.createElement('div');
+        cell.className = 'cell ' + (val ? 'ship' : '');
+        cell.onclick = () => onCellClick(idx);
+        grid.appendChild(cell);
+    });
+}
+
+export function renderShipSelector() {
+    const div = document.getElementById('ship-selector');
+    if (!div) return;
+    div.innerHTML = state.shipsToPlace.map(() => '<div class="w-4 h-4 bg-cyan-400 rounded-sm"></div>').join('');
+}
+
+export function renderBattleGrids(onShootClick) {
+    const eGrid = document.getElementById('enemy-grid');
+    const mGrid = document.getElementById('my-grid');
+    if (eGrid) {
+        eGrid.innerHTML = '';
+        eGrid.classList.add('fog-of-war');
+        for (let i = 0; i < state.grid.length; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.idx = i;
+            cell.onclick = () => onShootClick(i);
+            eGrid.appendChild(cell);
+        }
+    }
+    if (mGrid) {
+        mGrid.innerHTML = '';
+        state.grid.forEach(val => {
+            const cell = document.createElement('div');
+            cell.className = 'cell ' + (val ? 'ship' : '');
+            mGrid.appendChild(cell);
+        });
+    }
+}
+
+/** Обновить свою сетку после выстрела противника. */
+export function updateGridVisuals(shot) {
+    const myGrid = document.getElementById('my-grid');
+    if (!myGrid || shot.idx < 0 || shot.idx >= myGrid.children.length) return;
+    const cell = myGrid.children[shot.idx];
+    const isShip = state.grid[shot.idx];
+    cell.className = 'cell ' + (isShip ? 'ship hit' : 'miss');
+}
+
+export function setEnemyCellClass(idx, className) {
+    const cell = document.querySelector(`#enemy-grid .cell[data-idx="${idx}"]`);
+    if (cell) cell.className = 'cell ' + className;
+}
+
+export function setMyGridCellClass(idx, className) {
+    const myGrid = document.getElementById('my-grid');
+    if (!myGrid) return;
+    const cell = myGrid.children[idx];
+    if (cell) cell.className = 'cell ' + className;
+}
+
+export function showShake() {
+    document.body.classList.add('shake');
+    setTimeout(() => document.body.classList.remove('shake'), 500);
+}
+
+export function copyGameLink() {
+    const input = document.getElementById('share-link-input');
+    if (!input) return;
+    input.select();
+    input.setSelectionRange(0, 99999);
+    try {
+        navigator.clipboard.writeText(input.value);
+        const tg = getTg();
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+    } catch (e) {}
+}
+
+export function setTurnIndicator(text, isMyTurn) {
+    const el = document.getElementById('turn-indicator');
+    if (el) {
+        el.textContent = text;
+        el.style.color = isMyTurn ? '#00ffff' : '#ff00ff';
+    }
+}
+
+export function setBattleTimer(seconds) {
+    const el = document.getElementById('battle-timer');
+    if (el) el.textContent = seconds;
+}
+
+export function showOpponentLeftMessage() {
+    const key = state.lang === 'ru' ? 'opponent_left' : 'opponent_left';
+    const msg = TEXTS[state.lang]?.opponent_left || 'Opponent left the game';
+    showToast(msg, 'info');
+}
+
+/**
+ * Показать toast-уведомление (замена alert).
+ * @param {string} message - Текст сообщения
+ * @param {string} type - Тип: 'success', 'error', 'info' (по умолчанию 'info')
+ * @param {number} duration - Длительность в мс (по умолчанию 3000)
+ */
+export function showToast(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+    toast.innerHTML = `<span style="font-weight: bold; color: ${type === 'success' ? 'var(--neon-cyan)' : type === 'error' ? '#ff4444' : 'var(--neon-blue)'}">${icon}</span><span>${message}</span>`;
+    
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('toast-exit');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, duration);
+}
+</file>
+
+<file path="main.py">
+import asyncio
+import logging
+import sys
+import time
+import os
+import json
+from pathlib import Path
+from dotenv import load_dotenv
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import CommandStart, CommandObject
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, FSInputFile
+from aiogram.utils.markdown import hbold
+
+# ⚙️ ЗАГРУЗКА НАСТРОЕК
+load_dotenv()
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEB_APP_URL = os.getenv("WEB_APP_URL")
+WELCOME_IMAGE_PATH = os.getenv("WELCOME_IMAGE_PATH")
+raw_admin_ids = os.getenv("ADMIN_IDS", "")
+ADMIN_IDS = [int(i.strip()) for i in raw_admin_ids.split(",") if i.strip()]
+
+# Файл для сохранения состояния (кэш, данные) при выключении бота
+DB_PATH = Path(__file__).parent / "bot_state.json"
+
+cached_welcome_file_id = None
+
+# Подавить шумные логи aiogram при обрыве соединения
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(levelname)s: %(message)s"
+)
+logging.getLogger("aiogram.dispatcher").setLevel(logging.WARNING)
+
+bot = Bot(token=BOT_TOKEN)
+dp = Dispatcher()
+
+
+def load_db():
+    """Загрузить состояние бота из файла (при старте)."""
+    global cached_welcome_file_id
+    try:
+        if DB_PATH.exists():
+            with open(DB_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                cached_welcome_file_id = data.get("cached_welcome_file_id")
+    except Exception as e:
+        logging.warning(f"Не удалось загрузить bot_state.json: {e}")
+
+
+def save_db():
+    """Сохранить состояние бота в файл (при выключении/перезагрузке)."""
+    try:
+        data = {
+            "cached_welcome_file_id": cached_welcome_file_id,
+        }
+        with open(DB_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logging.warning(f"Не удалось сохранить bot_state.json: {e}")
+
+
+async def show_loading_animation():
+    print("🚀 Инициализация систем Naval Warfare...")
+    toolbar_width = 40
+    for i in range(toolbar_width + 1):
+        time.sleep(0.03)
+        progress = int((i / toolbar_width) * 100)
+        bar = "█" * i + "-" * (toolbar_width - i)
+        sys.stdout.write(f"\r[{bar}] {progress}% Загрузка модулей")
+        sys.stdout.flush()
+    print("\n✅ Система готова к бою!\n")
+
+
+@dp.message(CommandStart())
+async def command_start_handler(message: types.Message, command: CommandObject):
+    global cached_welcome_file_id
+
+    user_name = message.from_user.full_name
+    start_arg = command.args
+
+    if start_arg:
+        final_url = f"{WEB_APP_URL}?startapp={start_arg}"
+        button_text = "🚀 ПРИСОЕДИНИТЬСЯ К БОЮ"
+    else:
+        final_url = WEB_APP_URL
+        button_text = "🎮 ИГРАТЬ В МОРСКОЙ БОЙ"
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=button_text, web_app=WebAppInfo(url=final_url))],
+        [InlineKeyboardButton(text="📢 Чат тех поддержки", url="https://t.me/+TBA0Y-Cg3aU5M2Vi")]
+    ])
+
+    caption_text = (
+        f"👋 Здравия желаю, {hbold(user_name)}!\n\n"
+        f"⚓️ <b>NAVAL WARFARE 2077</b> — это морской бой нового поколения.\n\n"
+        f"🔥 <b>Что тебя ждет:</b>\n"
+        f"• Сражения с реальными игроками\n"
+        f"• Система званий и рейтингов\n"
+        f"• Эпические спецэффекты\n\n"
+        f"👇 Жми кнопку ниже, чтобы развернуть флот!"
+    )
+
+    try:
+        if cached_welcome_file_id:
+            await message.answer_photo(
+                photo=cached_welcome_file_id,
+                caption=caption_text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+        else:
+            photo_file = FSInputFile(WELCOME_IMAGE_PATH)
+            sent_message = await message.answer_photo(
+                photo=photo_file,
+                caption=caption_text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+            cached_welcome_file_id = sent_message.photo[-1].file_id
+            logging.info(f"Файл загружен и кэш сохранён. ID: {cached_welcome_file_id}")
+    except Exception as e:
+        logging.error(f"Ошибка при отправке фото: {e}")
+        await message.answer(caption_text, parse_mode="HTML", reply_markup=keyboard)
+
+
+async def on_startup():
+    load_db()
+    await show_loading_animation()
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, "✅ Бот запущен")
+        except Exception as e:
+            logging.error(f"Не удалось отправить сообщение админу {admin_id}: {e}")
+
+
+async def on_shutdown():
+    print("\n🛑 Останавливаю системы...")
+    save_db()
+    for admin_id in ADMIN_IDS:
+        try:
+            await bot.send_message(admin_id, "🛑 Бот остановлен", parse_mode="HTML")
+        except Exception:
+            pass
+    print("Бот выключен.")
+
+
+async def main():
+    dp.startup.register(on_startup)
+    dp.shutdown.register(on_shutdown)
+    await bot.delete_webhook(drop_pending_updates=True)
+    try:
+        await dp.start_polling(bot)
+    except asyncio.CancelledError:
+        pass
+    finally:
+        await bot.session.close()
+
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n🛑 Остановка бота...")
+        save_db()
+</file>
+
